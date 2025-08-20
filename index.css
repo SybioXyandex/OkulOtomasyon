@@ -1,695 +1,634 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-import { GoogleGenAI } from "@google/genai";
-import { createClient } from "@supabase/supabase-js";
+:root {
+    --primary-color: #007bff;
+    --primary-hover: #0056b3;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --background-color: #eef2f5;
+    --card-bg: #ffffff;
+    --text-color: #212529;
+    --text-muted: #6c757d;
+    --border-color: #dee2e6;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    --font-family: 'Inter', sans-serif;
 
-
-// --- SUPABASE SETUP ---
-const SUPABASE_URL = 'https://peettiigrkhtloqschwe.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlZXR0aWlncmtodGxvcXNjaHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Mjc3MzMsImV4cCI6MjA3MTIwMzczM30.mnnIlRJaRQP2RnHyb-0Sp0AwPE6hTUe5uWrMi-Q6pnc';
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-
-// --- STATE MANAGEMENT ---
-function getInitialState() {
-    return {
-        currentUser: null,
-        posts: [],
-        comments: [],
-        authView: 'login',
-        error: null,
-        loading: true,
-    };
+    /* New colors for posts and comments */
+    --post-bg-color: #e9f7ef;
+    --post-border-color: #a7d7b9;
+    --comment-teacher-bg: #e6f3ff;
+    --comment-parent-bg: #fff8e1;
+    --comment-admin-bg: #f3e5f5;
+    --comment-student-bg: #f5f5f5;
 }
 
-let state = getInitialState();
-
-function setState(newState) {
-    state = { ...state, ...newState };
-    renderApp();
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-// --- UTILITIES ---
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => document.querySelectorAll(selector);
-
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleString('tr-TR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+html {
+    font-size: 16px;
 }
 
-// --- RENDER FUNCTIONS ---
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+}
 
-function renderApp() {
-    const root = document.getElementById('root');
-    if (!root) return;
+#root {
+    width: 100%;
+    max-width: 900px;
+}
 
-    if (state.loading) {
-        root.innerHTML = `<div class="loader-container"><div class="loader"></div></div>`;
-        return;
+.hidden {
+    display: none;
+}
+
+/* --- Loader --- */
+.loader-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80vh;
+}
+.loader {
+    border: 6px solid var(--light-color);
+    border-top: 6px solid var(--primary-color);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
+/* --- Auth Page --- */
+.auth-container {
+    max-width: 450px;
+    margin: 4rem auto;
+    padding: 2.5rem;
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.auth-tabs {
+    display: flex;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--secondary-color);
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+.auth-tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.error-message {
+    color: var(--danger-color);
+    margin-top: 1rem;
+    text-align: center;
+}
+
+/* --- Buttons --- */
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    text-align: center;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn:disabled {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+.btn-block {
+    width: 100%;
+    display: block;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+.btn-success:hover {
+    opacity: 0.9;
+}
+
+.btn-outline {
+    background-color: transparent;
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.btn-outline:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+
+.btn-sm {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+}
+
+/* --- Dashboard --- */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.user-info span {
+    font-weight: 500;
+}
+
+/* --- Post Creation --- */
+.post-creation-card {
+    background-color: var(--card-bg);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 2rem;
+}
+
+.post-creation-card h2 {
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+}
+
+.post-creation-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+
+/* --- Feed --- */
+.feed-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.post-card {
+    background-color: var(--post-bg-color);
+    border: 1px solid var(--post-border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+.post-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--post-border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.post-header-info {
+    flex-grow: 1;
+}
+
+.post-header h2 {
+    margin-bottom: 0.5rem;
+    font-size: 1.4rem;
+}
+
+.post-meta {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.post-content {
+    padding: 1.5rem;
+    white-space: pre-wrap;
+}
+
+.post-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--post-border-color);
+}
+
+.btn-toggle-comments {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.btn-toggle-comments:hover {
+    background-color: var(--light-color);
+    border-color: var(--secondary-color);
+    color: var(--dark-color);
+}
+
+
+/* --- Badges --- */
+.badge {
+    display: inline-block;
+    padding: 0.4em 0.8em;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border-radius: 1rem;
+    white-space: nowrap;
+}
+
+.badge-warning {
+    background-color: var(--warning-color);
+    color: #333;
+}
+
+.badge-secondary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+/* --- Comments --- */
+.comments-container {
+    background-color: var(--card-bg);
+    border-top: 1px solid var(--post-border-color);
+}
+
+.comments-section {
+    padding: 1.5rem;
+}
+
+.comments-section h3 {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.comment-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.replies-container {
+    padding-left: 2rem;
+    margin-left: 1rem;
+    border-left: 2px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+
+.comment {
+    border: 1px solid var(--border-color);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background-color: var(--light-color);
+}
+
+.comment.comment-role-teacher {
+    background-color: var(--comment-teacher-bg);
+    border-color: #b3d9ff;
+}
+.comment.comment-role-parent {
+    background-color: var(--comment-parent-bg);
+    border-color: #ffecb3;
+}
+.comment.comment-role-admin {
+    background-color: var(--comment-admin-bg);
+    border-color: #e1bee7;
+}
+.comment.comment-role-student {
+    background-color: var(--comment-student-bg);
+    border-color: #e0e0e0;
+}
+
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.comment-author {
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.comment-body {
+    font-size: 0.95rem;
+}
+
+.comment-footer {
+    margin-top: 0.75rem;
+}
+
+.btn-reply {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    font-size: 0.85rem;
+}
+
+.btn-reply:hover {
+    text-decoration: underline;
+}
+
+
+.comment-form {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reply-form {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.reply-form .form-group {
+    margin-bottom: 0.5rem;
+}
+
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.comment-form button {
+    align-self: flex-end;
+}
+
+/* --- AI Modal --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background-color: var(--card-bg);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.modal-header h2 {
+    font-size: 1.4rem;
+    color: var(--primary-color);
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    line-height: 1;
+    padding: 0;
+}
+
+.modal-close-btn:hover {
+    color: var(--dark-color);
+}
+
+#generate-ai-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#ai-result-container {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    min-height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    width: 100%;
+}
+
+#ai-result-container .loader {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+}
+
+.modal-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+/* --- Footer --- */
+footer {
+    width: 100%;
+    max-width: 900px;
+    margin-top: auto;
+    padding-top: 2rem;
+    text-align: center;
+}
+
+footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+footer a:hover {
+    color: var(--primary-color);
+}
+
+footer a svg {
+    width: 18px;
+    height: 18px;
+}
+
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    body {
+        padding: 1rem 0.5rem;
     }
-
-    if (state.currentUser) {
-        root.innerHTML = renderDashboard();
-    } else {
-        root.innerHTML = renderAuth();
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
     }
-    attachEventListeners();
-}
-
-function renderAuth() {
-    const isLogin = state.authView === 'login';
-    return `
-        <div class="auth-container">
-            <div class="auth-tabs">
-                <button class="auth-tab ${isLogin ? 'active' : ''}" data-view="login">Giriş Yap</button>
-                <button class="auth-tab ${!isLogin ? 'active' : ''}" data-view="register">Kayıt Ol</button>
-            </div>
-            <form id="${isLogin ? 'login-form' : 'register-form'}">
-                <div class="form-group">
-                    <label for="email">E-posta</label>
-                    <input type="email" id="email" class="form-control" required autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label for="password">Şifre</label>
-                    <input type="password" id="password" class="form-control" required autocomplete="current-password">
-                </div>
-                ${!isLogin ? `
-                    <div class="form-group">
-                        <label for="role">Rol</label>
-                        <select id="role" class="form-control" required>
-                            <option value="student">Öğrenci</option>
-                            <option value="parent">Veli</option>
-                            <option value="teacher">Öğretmen</option>
-                            <option value="admin">Yönetici</option>
-                        </select>
-                    </div>
-                ` : ''}
-                <button type="submit" class="btn btn-primary btn-block">
-                    ${isLogin ? 'Giriş Yap' : 'Kayıt Ol'}
-                </button>
-                ${state.error ? `<p class="error-message">${state.error}</p>` : ''}
-            </form>
-        </div>
-    `;
-}
-
-function renderDashboard() {
-    const user = state.currentUser;
-    return `
-        <header class="dashboard-header">
-            <h1>Okul İletişim Platformu</h1>
-            <div class="user-info">
-                <span>Hoşgeldin, <strong>${user.username}</strong> (${user.role})</span>
-                <button id="logout-btn" class="btn">Çıkış Yap</button>
-            </div>
-        </header>
-        <main>
-            ${user.role === 'teacher' || user.role === 'admin' ? renderPostCreationForm() : ''}
-            <div class="feed-container">
-                ${getVisiblePosts().map(renderPost).join('')}
-            </div>
-        </main>
-    `;
-}
-
-function renderPostCreationForm() {
-    return `
-        <div class="post-creation-card">
-            <h2>Yeni Duyuru/Etkinlik Oluştur</h2>
-            <form id="create-post-form">
-                <div class="form-group">
-                    <label for="post-title">Başlık</label>
-                    <input type="text" id="post-title" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="post-content">İçerik</label>
-                    <textarea id="post-content" class="form-control" required></textarea>
-                </div>
-                <div class="post-creation-form-actions">
-                    <button type="button" class="btn btn-outline" id="open-ai-modal-btn">✨ AI ile Oluştur</button>
-                    <button type="submit" class="btn btn-primary">Gönder</button>
-                </div>
-            </form>
-        </div>
-    `;
-}
-
-function getVisiblePosts() {
-    const user = state.currentUser;
-    if (user.role === 'admin' || user.role === 'teacher') {
-        return state.posts;
+    .user-info {
+        width: 100%;
+        justify-content: space-between;
     }
-    return state.posts.filter(p => p.status === 'published');
-}
-
-function renderPost(post) {
-    const user = state.currentUser;
-    const isAdmin = user.role === 'admin';
-    const canSeeComments = user.role !== 'student';
-
-    let statusBadge = '';
-    if (post.status === 'pending_admin') {
-        statusBadge = `<span class="badge badge-warning">Yönetici Onayı Bekliyor</span>`;
+    .auth-container {
+        margin: 1rem;
+        padding: 1.5rem;
     }
-
-    const commentCount = canSeeComments ? getVisibleComments(post.id).length : 0;
-
-    return `
-        <div class="post-card" data-post-id="${post.id}">
-            <div class="post-header">
-                <div class="post-header-info">
-                    <h2>${post.title}</h2>
-                    <p class="post-meta">
-                        ${post.authorName} tarafından, ${formatDate(post.createdAt)}
-                    </p>
-                </div>
-                <div class="post-header-actions">
-                    ${statusBadge}
-                    ${isAdmin && post.status === 'pending_admin' ? `
-                        <button class="btn btn-success btn-sm" data-action="publish-post" data-post-id="${post.id}">Yayınla</button>
-                    ` : ''}
-                </div>
-            </div>
-            <div class="post-content">${post.content}</div>
-            ${canSeeComments ? `
-                <div class="post-actions">
-                    <button class="btn-toggle-comments" data-action="toggle-comments" data-post-id="${post.id}">
-                        Yorumları Göster (${commentCount})
-                    </button>
-                </div>
-                <div class="comments-container hidden" id="comments-for-${post.id}">
-                    ${renderCommentsSection(post.id)}
-                </div>
-            ` : ''}
-        </div>
-    `;
-}
-
-function getVisibleComments(postId) {
-    const user = state.currentUser;
-    const postComments = state.comments.filter(c => c.postId === postId);
-
-    if (user.role === 'admin' || user.role === 'teacher') {
-        return postComments;
+    .replies-container {
+        margin-left: 0.5rem;
+        padding-left: 1rem;
     }
-    return postComments.filter(c => c.status === 'approved' || (c.authorId === user.id));
-}
-
-
-function renderCommentsSection(postId) {
-    const user = state.currentUser;
-    const comments = getVisibleComments(postId);
-
-    const repliesByParentId = comments.reduce((acc, comment) => {
-        if (comment.parentId) {
-            if (!acc[comment.parentId]) {
-                acc[comment.parentId] = [];
-            }
-            acc[comment.parentId].push(comment);
-        }
-        return acc;
-    }, {});
-
-    const topLevelComments = comments.filter(c => !c.parentId);
-    const canComment = ['parent', 'teacher', 'admin'].includes(user.role);
-
-    return `
-        <div class="comments-section">
-            <h3>Yorumlar</h3>
-            <div class="comments-list">
-                ${topLevelComments.length > 0
-                    ? topLevelComments.map(comment => `
-                        <div class="comment-thread">
-                            ${renderComment(comment)}
-                            <div class="replies-container">
-                                ${(repliesByParentId[comment.id] || []).map(reply => renderComment(reply, true)).join('')}
-                            </div>
-                        </div>
-                    `).join('')
-                    : '<p>Henüz yorum yapılmamış.</p>'}
-            </div>
-            ${canComment ? `
-                <form class="comment-form" data-action="add-comment" data-post-id="${postId}">
-                    <div class="form-group">
-                       <textarea class="form-control" name="comment-content" placeholder="Yorumunuzu yazın..." required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm">Gönder</button>
-                </form>
-            ` : ''}
-        </div>
-    `;
-}
-
-function renderComment(comment, isReply = false) {
-    const user = state.currentUser;
-    const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin';
-    const canReply = ['parent', 'teacher', 'admin'].includes(user.role);
-
-    let statusBadge = '';
-    if (comment.status === 'pending_teacher') {
-        statusBadge = `<span class="badge badge-secondary">Onay Bekliyor</span>`;
+    .modal-content {
+        padding: 1.5rem;
     }
-
-    return `
-        <div class="comment ${isReply ? 'is-reply' : ''} comment-role-${comment.authorRole}" data-comment-id="${comment.id}">
-            <div class="comment-header">
-                <span class="comment-author">${comment.authorName} (${comment.authorRole})</span>
-                <div class="comment-actions">
-                    ${statusBadge}
-                    ${isTeacherOrAdmin && comment.status === 'pending_teacher' ? `
-                        <button class="btn btn-success btn-sm" data-action="approve-comment" data-comment-id="${comment.id}">Onayla</button>
-                    ` : ''}
-                </div>
-            </div>
-            <p class="comment-body">${comment.content}</p>
-            <div class="comment-footer">
-                ${canReply ? `
-                    <button class="btn-reply" data-action="toggle-reply-form" data-comment-id="${comment.id}">Yanıtla</button>
-                ` : ''}
-            </div>
-            <form class="comment-form reply-form hidden" data-action="add-reply" data-post-id="${comment.postId}" data-parent-id="${comment.id}">
-                <div class="form-group">
-                    <textarea class="form-control" name="reply-content" placeholder="Yanıtınızı yazın..." required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary btn-sm">Gönder</button>
-            </form>
-        </div>
-    `;
-}
-
-// --- EVENT HANDLERS & LOGIC ---
-
-function attachEventListeners() {
-    // Auth
-    $$('.auth-tab').forEach(tab => tab.addEventListener('click', handleAuthTabClick));
-    $('#login-form')?.addEventListener('submit', handleLogin);
-    $('#register-form')?.addEventListener('submit', handleRegister);
-
-    // Dashboard
-    $('#logout-btn')?.addEventListener('click', handleLogout);
-    $('#create-post-form')?.addEventListener('submit', handleCreatePost);
-    $('#open-ai-modal-btn')?.addEventListener('click', handleOpenAIModal);
-    
-    // Post & Comment Actions
-    $$('[data-action="publish-post"]').forEach(btn => btn.addEventListener('click', handlePublishPost));
-    $$('[data-action="approve-comment"]').forEach(btn => btn.addEventListener('click', handleApproveComment));
-    $$('[data-action="add-comment"]').forEach(form => form.addEventListener('submit', handleAddComment));
-    $$('[data-action="toggle-reply-form"]').forEach(btn => btn.addEventListener('click', handleToggleReplyForm));
-    $$('[data-action="add-reply"]').forEach(form => form.addEventListener('submit', handleAddReply));
-    $$('[data-action="toggle-comments"]').forEach(btn => btn.addEventListener('click', handleToggleComments));
-}
-
-function handleAuthTabClick(e) {
-    const target = e.currentTarget;
-    const view = target.dataset.view;
-    setState({ authView: view, error: null });
-}
-
-async function handleLogin(e) {
-    e.preventDefault();
-    const emailInput = $('#email');
-    const passwordInput = $('#password');
-
-    if (!emailInput || !passwordInput) {
-        setState({ error: 'Giriş formu hatası. Lütfen tekrar deneyin.', loading: false });
-        return;
-    }
-    const email = emailInput.value;
-    const password = passwordInput.value;
-    
-    setState({ loading: true, error: null });
-
-    const { error } = await db.auth.signInWithPassword({ email, password });
-
-    if (error) {
-        setState({ error: 'Giriş bilgileri hatalı.', loading: false });
-    }
-    // onAuthStateChange handles success
-}
-
-async function handleRegister(e) {
-    e.preventDefault();
-    const emailInput = $('#email');
-    const passwordInput = $('#password');
-    const roleInput = $('#role');
-
-    if (!emailInput || !passwordInput || !roleInput) {
-        setState({ error: 'Kayıt formu hatası. Lütfen tekrar deneyin.', loading: false });
-        return;
-    }
-
-    const email = emailInput.value;
-    const password = passwordInput.value;
-    const role = roleInput.value;
-    const username = email.split('@')[0];
-
-    setState({ loading: true, error: null });
-
-    const { error } = await db.auth.signUp({
-        email,
-        password,
-        options: {
-            data: {
-                username: username,
-                role: role
-            }
-        }
-    });
-
-    if (error) {
-        let userMessage = error.message;
-        // Provide a more user-friendly error for a common Supabase backend misconfiguration.
-        if (userMessage.includes('Database error saving new user')) {
-            userMessage = 'Kayıt sırasında bir sunucu hatası oluştu. Lütfen sistem yöneticisi ile iletişime geçin.';
-        }
-        setState({ error: userMessage, loading: false });
-    }
-    // onAuthStateChange will handle login and data load automatically on success.
-}
-
-
-async function handleLogout() {
-    setState({ loading: true });
-    await db.auth.signOut();
-    // onAuthStateChange will handle the UI update to the login screen
-}
-
-async function handleAction(action) {
-    setState({ loading: true });
-    const { error } = await action();
-    if (error) {
-        console.error("Supabase error:", error);
-        setState({ error: "Bir hata oluştu: " + error.message, loading: false });
-    } else {
-        await loadAppData(); // Re-fetch all data after any action
+    .modal-header {
+        margin-bottom: 1.5rem;
     }
 }
-
-function handleCreatePost(e) {
-    e.preventDefault();
-    const title = ($('#post-title')).value;
-    const content = ($('#post-content')).value;
-    const user = state.currentUser;
-
-    const newPost = {
-        author_id: user.id,
-        title,
-        content,
-        status: user.role === 'admin' ? 'published' : 'pending_admin'
-    };
-    
-    handleAction(() => db.from('posts').insert(newPost));
-}
-
-function handlePublishPost(e) {
-    const postId = (e.currentTarget).dataset.postId;
-    handleAction(() => db.from('posts').update({ status: 'published' }).eq('id', postId));
-}
-
-function handleApproveComment(e) {
-    const commentId = (e.currentTarget).dataset.commentId;
-    handleAction(() => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
-}
-
-function handleAddComment(e) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const postId = form.dataset.postId;
-    const contentEl = form.querySelector('[name="comment-content"]');
-    const content = contentEl.value;
-    const user = state.currentUser;
-
-    if(!content.trim()) return;
-
-    const newComment = {
-        post_id: postId,
-        author_id: user.id,
-        content,
-        status: user.role === 'parent' ? 'pending_teacher' : 'approved'
-    };
-    
-    handleAction(() => db.from('comments').insert(newComment));
-}
-
-function handleToggleReplyForm(e) {
-    const commentId = (e.currentTarget).dataset.commentId;
-    const commentElement = (e.currentTarget).closest('.comment');
-    const replyForm = commentElement?.querySelector('.reply-form');
-    replyForm?.classList.toggle('hidden');
-    if (!replyForm?.classList.contains('hidden')) {
-        (replyForm?.querySelector('textarea')).focus();
-    }
-}
-
-function handleAddReply(e) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const postId = form.dataset.postId;
-    const parentId = form.dataset.parentId;
-    const contentEl = form.querySelector('[name="reply-content"]');
-    const content = contentEl.value;
-    const user = state.currentUser;
-
-    if (!content.trim()) return;
-
-    const newReply = {
-        post_id: postId,
-        parent_id: parentId,
-        author_id: user.id,
-        content,
-        status: user.role === 'parent' ? 'pending_teacher' : 'approved'
-    };
-
-    handleAction(() => db.from('comments').insert(newReply));
-}
-
-function handleToggleComments(e) {
-    const button = e.currentTarget;
-    const postId = button.dataset.postId;
-    const commentsContainer = $(`#comments-for-${postId}`);
-    
-    if (commentsContainer) {
-        const isHidden = commentsContainer.classList.toggle('hidden');
-        const commentCount = getVisibleComments(postId).length;
-        if (isHidden) {
-            button.textContent = `Yorumları Göster (${commentCount})`;
-        } else {
-            button.textContent = `Yorumları Gizle (${commentCount})`;
-        }
-    }
-}
-
-// --- AI ASSISTANT ---
-
-function createAIModalHTML() {
-    return `
-        <div class="modal-overlay" id="ai-modal-overlay">
-            <div class="modal-content" id="ai-modal-content" role="dialog" aria-labelledby="ai-modal-title" aria-modal="true">
-                <div class="modal-header">
-                    <h2 id="ai-modal-title">✨ AI Duyuru Asistanı</h2>
-                    <button class="modal-close-btn" aria-label="Kapat">&times;</button>
-                </div>
-                <form id="generate-ai-form">
-                    <div class="form-group">
-                        <label for="ai-brief">Duyurunun ana fikri</label>
-                        <input type="text" id="ai-brief" class="form-control" placeholder="Örn: Cuma günü 5. sınıflar için matematik sınavı" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="ai-tone">Metin tonu</label>
-                        <select id="ai-tone" class="form-control" required>
-                            <option value="Resmi">Resmi</option>
-                            <option value="Samimi">Samimi</option>
-                            <option value="Acil">Acil</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">Oluştur</button>
-                </form>
-                <div id="ai-result-container">
-                    <p>Duyuru metni burada görünecek.</p>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function handleOpenAIModal() {
-    const modal = createAIModalHTML();
-    document.body.insertAdjacentHTML('beforeend', modal);
-    
-    $('#ai-modal-overlay')?.addEventListener('click', handleCloseAIModal);
-    $('#ai-modal-content')?.addEventListener('click', (e) => e.stopPropagation());
-    $('.modal-close-btn')?.addEventListener('click', handleCloseAIModal);
-    $('#generate-ai-form')?.addEventListener('submit', handleGenerateAnnouncement);
-}
-
-function handleCloseAIModal() {
-    const modal = $('#ai-modal-overlay');
-    modal?.remove();
-}
-
-async function handleGenerateAnnouncement(e) {
-    e.preventDefault();
-    const brief = ($('#ai-brief')).value;
-    const tone = ($('#ai-tone')).value;
-    const resultContainer = $('#ai-result-container');
-    const generateBtn = ($('#generate-ai-form button[type="submit"]'));
-
-    if (!brief || !resultContainer || !generateBtn) return;
-    
-    resultContainer.innerHTML = `<div class="loader"></div>`;
-    generateBtn.disabled = true;
-    generateBtn.textContent = 'Oluşturuluyor...';
-
-    try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const prompt = `Lütfen aşağıdaki notlara ve tona göre, bir okul duyuru platformu için veli ve öğrencilere yönelik bir duyuru metni oluştur. Duyuru net, anlaşılır ve profesyonel olsun.\n\nNotlar: "${brief}"\n\nTon: ${tone}`;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                systemInstruction: "You are an AI assistant for a school communication platform. Your task is to write announcements in Turkish for students and parents. Ensure the tone is appropriate and the message is clear and professional, based on the user's notes.",
-            }
-        });
-        
-        const generatedText = response.text;
-
-        resultContainer.innerHTML = `
-            <div class="form-group" style="width: 100%;">
-                <label>Oluşturulan Metin</label>
-                <textarea id="ai-generated-text" class="form-control" rows="8">${generatedText}</textarea>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-primary" id="use-ai-text-btn">Bu Metni Kullan</button>
-            </div>
-        `;
-
-        $('#use-ai-text-btn')?.addEventListener('click', () => {
-            const postContent = $('#post-content');
-            const aiText = $('#ai-generated-text');
-            if (postContent && aiText) {
-                postContent.value = aiText.value;
-                postContent.dispatchEvent(new Event('input', { bubbles: true })); // For any autosize listeners
-                postContent.focus();
-            }
-            handleCloseAIModal();
-        });
-
-    } catch (error) {
-        console.error("Gemini API error:", error);
-        resultContainer.innerHTML = `<p class="error-message">AI metin oluştururken bir hata oluştu. Lütfen API anahtarınızın doğru olduğundan emin olun ve tekrar deneyin.</p>`;
-    } finally {
-        generateBtn.disabled = false;
-        generateBtn.textContent = 'Oluştur';
-    }
-}
-
-// --- DATA FETCHING & INITIALIZATION ---
-
-async function loadAppData() {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session?.user) {
-        setState({ loading: false, currentUser: null, authView: 'login' });
-        return;
-    }
-
-    const user = session.user;
-
-    // Robust Profile Fetching with Retry
-    let profile = null;
-    let profileError = null;
-    for (let i = 0; i < 3; i++) {
-        const { data, error } = await db.from('profiles').select('username, role').eq('id', user.id).single();
-        if (data && !error) {
-            profile = data;
-            profileError = null;
-            break;
-        }
-        profileError = error;
-        // Wait 500ms before retrying
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    if (profileError || !profile) {
-        const detail = profileError ? `${profileError.message} (Kod: ${profileError.code})` : 'Profil verisi bulunamadı.';
-        console.error("Profile fetch error after retries:", profileError);
-        
-        // If profile is not found, it's a critical error. Log the user out.
-        await db.auth.signOut();
-        setState({
-            loading: false,
-            error: `Oturum açılamadı: Kullanıcı profili alınamadı. Lütfen veritabanı kurulumunun doğru olduğundan emin olun. Detay: ${detail}`,
-            currentUser: null,
-            authView: 'login'
-        });
-        return;
-    }
-
-    const [postsResult, commentsResult] = await Promise.all([
-        db.from('posts').select('*, profiles(username)').order('created_at', { ascending: false }),
-        db.from('comments').select('*, profiles(username, role)').order('created_at', { ascending: true })
-    ]);
-
-    if (postsResult.error) {
-        const errorMessage = `Duyurular alınamadı: ${postsResult.error.message}`;
-        console.error("Posts fetch error:", postsResult.error);
-        setState({ loading: false, error: errorMessage });
-        return;
-    }
-
-    if (commentsResult.error) {
-        const errorMessage = `Yorumlar alınamadı: ${commentsResult.error.message}`;
-        console.error("Comments fetch error:", commentsResult.error);
-        setState({ loading: false, error: errorMessage });
-        return;
-    }
-
-    const currentUser = { id: user.id, username: profile.username, role: profile.role };
-    const posts = postsResult.data.map((p) => ({
-        id: p.id,
-        authorId: p.author_id,
-        authorName: p.profiles?.username || 'Bilinmeyen Yazar',
-        title: p.title,
-        content: p.content,
-        createdAt: p.created_at,
-        status: p.status,
-    }));
-    const comments = commentsResult.data.map((c) => ({
-        id: c.id,
-        postId: c.post_id,
-        authorId: c.author_id,
-        authorName: c.profiles?.username || 'Bilinmeyen Kullanıcı',
-        authorRole: c.profiles?.role || 'student',
-        content: c.content,
-        createdAt: c.created_at,
-        status: c.status,
-        parentId: c.parent_id,
-    }));
-
-    setState({ currentUser, posts, comments, loading: false, error: null });
-}
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial check
-    loadAppData();
-    
-    // Listen for auth changes
-    db.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            loadAppData();
-        } else if (event === 'SIGNED_OUT') {
-            setState(getInitialState()); // Reset to initial state and show login
-            state.loading = false;
-            renderApp();
-        }
-    });
-});
