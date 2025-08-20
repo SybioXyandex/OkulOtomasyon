@@ -16,7 +16,6 @@
       }
     }
   </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body>
   <main id="auth-container" class="auth-container">
@@ -25,7 +24,6 @@
       <button id="signup-tab">Kayıt Ol</button>
     </div>
 
-    <!-- Login Form -->
     <form id="login-form">
       <div class="form-group">
         <label for="login-email">E-posta</label>
@@ -38,7 +36,6 @@
       <button type="submit">Giriş Yap</button>
     </form>
 
-    <!-- Sign Up Form -->
     <form id="signup-form" class="hidden">
       <div class="form-group">
         <label for="signup-email">E-posta</label>
@@ -88,8 +85,7 @@
           </tr>
         </thead>
         <tbody id="announcements-tbody">
-          <!-- Announcements will be loaded here -->
-        </tbody>
+          </tbody>
       </table>
     </section>
 
@@ -104,17 +100,14 @@
           </tr>
         </thead>
         <tbody id="events-tbody">
-          <!-- Events will be loaded here -->
-        </tbody>
+          </tbody>
       </table>
     </section>
 
-    <!-- Admin Controls - Hidden by default -->
     <section id="admin-controls" class="hidden">
       <div class="admin-panel">
         <h4>Yönetici Paneli</h4>
         
-        <!-- Add Announcement Form -->
         <form id="add-announcement-form">
           <h5>Yeni Duyuru Ekle</h5>
           <div class="form-group">
@@ -124,7 +117,6 @@
           <button type="submit">Duyuruyu Yayınla</button>
         </form>
 
-        <!-- Add Event Form -->
         <form id="add-event-form">
           <h5>Yeni Etkinlik Ekle</h5>
           <div class="form-group">
@@ -160,6 +152,5 @@
     }
   </script>
   <script type="module" src="index.tsx"></script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
