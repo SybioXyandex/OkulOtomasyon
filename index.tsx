@@ -6,6 +6,11 @@ import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 
 
+// --- API KEYS ---
+// DİKKAT: Bu API anahtarını doğrudan koda eklemek güvenlik riski oluşturabilir.
+// Üretim ortamında bu anahtarı bir ortam değişkeni (environment variable) olarak ayarlamanız önerilir.
+
+
 // --- SUPABASE SETUP ---
 const SUPABASE_URL = 'https://peettiigrkhtloqschwe.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlZXR0aWlncmtodGxvcXNjaHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Mjc3MzMsImV4cCI6MjA3MTIwMzczM30.mnnIlRJaRQP2RnHyb-0Sp0AwPE6hTUe5uWrMi-Q6pnc';
@@ -545,11 +550,11 @@ function handleCreatePost(e: Event) {
     const content = ($('#post-content') as HTMLTextAreaElement).value;
     const user = state.currentUser!;
 
-    const newPost = {
+    const newPost: Database['public']['Tables']['posts']['Insert'] = {
         author_id: user.id,
         title,
         content,
-        status: (user.role === 'admin' ? 'published' : 'pending_admin') as PostStatus
+        status: (user.role === 'admin' ? 'published' : 'pending_admin')
     };
     
     handleAction(() => db.from('posts').insert(newPost));
@@ -557,12 +562,14 @@ function handleCreatePost(e: Event) {
 
 function handlePublishPost(e: Event) {
     const postId = (e.currentTarget as HTMLElement).dataset.postId!;
-    handleAction(() => db.from('posts').update({ status: 'published' }).eq('id', postId));
+    const payload: Database['public']['Tables']['posts']['Update'] = { status: 'published' };
+    handleAction(() => db.from('posts').update(payload).eq('id', postId));
 }
 
 function handleApproveComment(e: Event) {
     const commentId = (e.currentTarget as HTMLElement).dataset.commentId!;
-    handleAction(() => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
+    const payload: Database['public']['Tables']['comments']['Update'] = { status: 'approved' };
+    handleAction(() => db.from('comments').update(payload).eq('id', commentId));
 }
 
 function handleAddComment(e: Event) {
@@ -575,11 +582,11 @@ function handleAddComment(e: Event) {
 
     if(!content.trim()) return;
 
-    const newComment = {
+    const newComment: Database['public']['Tables']['comments']['Insert'] = {
         post_id: postId,
         author_id: user.id,
         content,
-        status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
+        status: (user.role === 'parent' ? 'pending_teacher' : 'approved')
     };
     
     handleAction(() => db.from('comments').insert(newComment));
@@ -606,12 +613,12 @@ function handleAddReply(e: Event) {
 
     if (!content.trim()) return;
 
-    const newReply = {
+    const newReply: Database['public']['Tables']['comments']['Insert'] = {
         post_id: postId,
         parent_id: parentId,
         author_id: user.id,
         content,
-        status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
+        status: (user.role === 'parent' ? 'pending_teacher' : 'approved')
     };
 
     handleAction(() => db.from('comments').insert(newReply));
