@@ -1,56 +1,43 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-const CACHE_NAME = 'sedat-yayla-portal-cache-v1';
-const URLS_TO_CACHE = [
+const CACHE_NAME = 'okul-otomasyon-cache-v1';
+const urlsToCache = [
   '/',
   '/index.html',
   '/index.css',
-  '/index.tsx',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
-// Install the service worker and cache the app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache and caching app shell');
-        return cache.addAll(URLS_TO_CACHE);
+        console.log('Cache opened');
+        return cache.addAll(urlsToCache);
       })
   );
 });
 
-// Activate the service worker and clean up old caches
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
+      })
+  );
+});
+
 self.addEventListener('activate', (event) => {
+  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Service Worker: clearing old cache');
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
             return caches.delete(cacheName);
           }
         })
       );
     })
-  );
-});
-
-// Serve app shell from cache. Go to network for everything else.
-self.addEventListener('fetch', (event) => {
-  // For Supabase API calls, always use the network.
-  if (event.request.url.includes('supabase.co')) {
-    return; // Let the browser handle it.
-  }
-
-  // For other requests, try the cache first, then the network.
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        return response || fetch(event.request);
-      })
   );
 });
