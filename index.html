@@ -1,156 +1,21 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Giriş Yap / Kayıt Ol</title>
-  <link rel="stylesheet" href="index.css">
-  <meta name="theme-color" content="#007bff">
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiB2aWV3Qm94PSIwIDAgMTkyIDE5MiIgZmlsbD0ibm9uZSI+IDxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiBmaWxsPSIjMDA3QkZGIi8+IDx0ZXh0IHg9Ijk2IiB5PSIxMTIiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWksIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjkwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlNZPC90ZXh0PiA8L3N2Zz4=">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="importmap">
-    {
-      "imports": {
-        "@google/genai": "https://esm.sh/@google/genai@^0.7.0"
-      }
-    }
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Okul İletişim Platformu</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <main id="auth-container" class="auth-container">
-    <div class="tab-buttons">
-      <button id="login-tab" class="active">Giriş Yap</button>
-      <button id="signup-tab">Kayıt Ol</button>
-    </div>
-
-    <form id="login-form">
-      <div class="form-group">
-        <label for="login-email">E-posta</label>
-        <input type="email" id="login-email" name="email" required autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label for="login-password">Şifre</label>
-        <input type="password" id="login-password" name="password" required autocomplete="current-password">
-      </div>
-      <button type="submit">Giriş Yap</button>
-    </form>
-
-    <form id="signup-form" class="hidden">
-      <div class="form-group">
-        <label for="signup-email">E-posta</label>
-        <input type="email" id="signup-email" name="email" required autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label for="signup-password">Şifre</label>
-        <input type="password" id="signup-password" name="password" minlength="6" required autocomplete="new-password">
-      </div>
-      <div class="form-group">
-        <label for="confirm-password">Şifreyi Onayla</label>
-        <input type="password" id="confirm-password" name="confirm-password" minlength="6" required autocomplete="new-password">
-      </div>
-       <div class="form-group">
-        <label>Rol</label>
-        <div class="role-selection">
-          <label>
-            <input type="radio" name="role" value="guest" checked> Öğrenci
-          </label>
-          <label>
-            <input type="radio" name="role" value="admin"> Öğretmen
-          </label>
+    <div id="root">
+        <div class="loader-container">
+            <div class="loader"></div>
         </div>
-      </div>
-      <button type="submit">Kayıt Ol</button>
-    </form>
-
-    <div id="auth-error" class="auth-error hidden"></div>
-  </main>
-
-  <main id="home-container" class="hidden">
-    <h2 id="welcome-message">Anasayfa</h2>
-    
-    <div class="tab-buttons">
-      <button id="announcements-tab-main" class="active">Duyurular</button>
-      <button id="events-tab-main">Yaklaşan Etkinlikler</button>
-      <button id="admin-tab-main" class="hidden">Yönetici Paneli</button>
-      <button id="logout-tab-main">Çıkış Yap</button>
     </div>
-
-    <section id="announcements-section" class="announcement">
-      <h3>Duyurular</h3>
-      <table class="styled-table" id="announcement-table">
-        <thead>
-          <tr>
-            <th>Duyuru</th>
-          </tr>
-        </thead>
-        <tbody id="announcements-tbody">
-          </tbody>
-      </table>
-    </section>
-
-    <section id="events-section" class="events hidden">
-      <h3>Yaklaşan Etkinlikler</h3>
-      <table class="styled-table" id="events-table">
-        <thead>
-          <tr>
-            <th>Etkinlik Adı</th>
-            <th>Tarih</th>
-            <th>İçerik</th>
-          </tr>
-        </thead>
-        <tbody id="events-tbody">
-          </tbody>
-      </table>
-    </section>
-
-    <section id="admin-controls" class="hidden">
-      <div class="admin-panel">
-        <h4>Yönetici Paneli</h4>
-        
-        <form id="add-announcement-form">
-          <h5>Yeni Duyuru Ekle</h5>
-          <div class="form-group">
-            <label for="announcement-content">Duyuru İçeriği</label>
-            <textarea id="announcement-content" name="content" required rows="3"></textarea>
-          </div>
-          <button type="submit">Duyuruyu Yayınla</button>
-        </form>
-
-        <form id="add-event-form">
-          <h5>Yeni Etkinlik Ekle</h5>
-          <div class="form-group">
-            <label for="event-name">Etkinlik Adı</label>
-            <input type="text" id="event-name" name="name" required>
-          </div>
-          <div class="form-group">
-            <label for="event-date">Tarih</label>
-            <input type="date" id="event-date" name="date" required>
-          </div>
-           <div class="form-group">
-            <label for="event-location">İçerik</label>
-            <input type="text" id="event-location" name="location" required>
-          </div>
-          <button type="submit">Etkinliği Ekle</button>
-        </form>
-      </div>
-    </section>
-  </main>
-
-  <div id="notification-toast" class="toast hidden"></div>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          })
-          .catch(err => {
-            console.log('ServiceWorker registration failed: ', err);
-          });
-      });
-    }
-  </script>
-  <script type="module" src="index.tsx"></script>
+    <script type="module" src="index.js"></script>
 </body>
 </html>
