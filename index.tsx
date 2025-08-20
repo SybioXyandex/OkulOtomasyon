@@ -543,11 +543,11 @@ function handleCreatePost(e: Event) {
     const content = ($('#post-content') as HTMLTextAreaElement).value;
     const user = state.currentUser!;
 
-    const newPost = {
+    const newPost: Database['public']['Tables']['posts']['Insert'] = {
         author_id: user.id,
         title,
         content,
-        status: (user.role === 'admin' ? 'published' : 'pending_admin') as PostStatus
+        status: user.role === 'admin' ? 'published' : 'pending_admin'
     };
     
     handleAction(async () => db.from('posts').insert(newPost));
@@ -555,12 +555,14 @@ function handleCreatePost(e: Event) {
 
 function handlePublishPost(e: Event) {
     const postId = (e.currentTarget as HTMLElement).dataset.postId!;
-    handleAction(async () => db.from('posts').update({ status: 'published' }).eq('id', postId));
+    const updateData: Database['public']['Tables']['posts']['Update'] = { status: 'published' };
+    handleAction(async () => db.from('posts').update(updateData).eq('id', postId));
 }
 
 function handleApproveComment(e: Event) {
     const commentId = (e.currentTarget as HTMLElement).dataset.commentId!;
-    handleAction(async () => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
+    const updateData: Database['public']['Tables']['comments']['Update'] = { status: 'approved' };
+    handleAction(async () => db.from('comments').update(updateData).eq('id', commentId));
 }
 
 function handleAddComment(e: Event) {
@@ -573,11 +575,11 @@ function handleAddComment(e: Event) {
 
     if(!content.trim()) return;
 
-    const newComment = {
+    const newComment: Database['public']['Tables']['comments']['Insert'] = {
         post_id: postId,
         author_id: user.id,
         content,
-        status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
+        status: user.role === 'parent' ? 'pending_teacher' : 'approved'
     };
     
     handleAction(async () => db.from('comments').insert(newComment));
@@ -604,12 +606,12 @@ function handleAddReply(e: Event) {
 
     if (!content.trim()) return;
 
-    const newReply = {
+    const newReply: Database['public']['Tables']['comments']['Insert'] = {
         post_id: postId,
         parent_id: parentId,
         author_id: user.id,
         content,
-        status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
+        status: user.role === 'parent' ? 'pending_teacher' : 'approved'
     };
 
     handleAction(async () => db.from('comments').insert(newReply));
