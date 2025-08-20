@@ -1,0 +1,309 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: #f0f2f5;
+  color: #1c1e21;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+main {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1);
+  padding: 2rem 3rem;
+  width: 100%;
+  max-width: 800px; /* Increased width for more content */
+  box-sizing: border-box;
+  text-align: center;
+}
+
+#home-container {
+  position: relative;
+}
+
+#welcome-message {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 2rem;
+  color: #333;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+#home-container section {
+  margin-bottom: 2.5rem;
+}
+
+#home-container h3 {
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+  color: #333;
+  font-size: 1.25rem;
+}
+
+/* Table Styles */
+.styled-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  font-size: 0.95rem;
+}
+
+.styled-table thead tr {
+  color: #ffffff;
+  text-align: left;
+  font-weight: bold;
+}
+
+#announcement-table thead tr {
+  background-color: #ff9800; /* Orange for announcements */
+}
+
+#events-table thead tr {
+  background-color: #009688; /* Teal for events */
+}
+
+.styled-table th,
+.styled-table td {
+  padding: 12px 15px;
+}
+
+.styled-table tbody tr {
+  border-bottom: 1px solid #dddddd;
+  background-color: #fdfdfd;
+}
+
+.styled-table tbody tr:nth-of-type(even) {
+  background-color: #f3f3f3;
+}
+
+.styled-table tbody tr:last-of-type {
+  border-bottom: 2px solid #009879;
+}
+
+.styled-table tbody tr:hover {
+  background-color: #e9ecef;
+  color: #000;
+}
+
+
+.tab-buttons {
+  display: flex;
+  margin-bottom: 1.5rem;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.tab-buttons button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: #f9f9f9;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  color: #555;
+  border-right: 1px solid #ddd;
+}
+
+.tab-buttons button:last-child {
+  border-right: none;
+}
+
+.tab-buttons button.active {
+  background-color: #007bff;
+  color: #fff;
+}
+
+#logout-tab-main {
+  margin-left: auto;
+  border-left: 1px solid #ddd;
+  background-color: transparent;
+  color: #c52626;
+}
+
+#logout-tab-main:hover {
+  background-color: #f8d7da;
+}
+
+/* Prevent logout tab from getting the blue 'active' style */
+#logout-tab-main.active {
+    background-color: transparent;
+    color: #c52626;
+}
+
+.hidden {
+  display: none;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #555;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.role-selection {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+.role-selection label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+
+button[type="submit"] {
+  width: 100%;
+  padding: 0.85rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background-color: #007bff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 0.5rem;
+}
+
+button[type="submit"]:hover {
+  background-color: #0056b3;
+}
+
+button[type="submit"]:disabled {
+  background-color: #5fa8ff;
+  cursor: not-allowed;
+}
+
+.auth-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 0.75rem 1.25rem;
+  margin-top: 1.5rem;
+  border: 1px solid #f5c6cb;
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* Admin Panel Styles */
+.admin-panel {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e9ecef;
+}
+
+.admin-panel h4 {
+  text-align: center;
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.admin-panel form {
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px solid #ddd;
+}
+
+.admin-panel h5 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    color: #1c1e21;
+}
+
+/* Toast Notification Styles */
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast.success {
+  background-color: #28a745;
+}
+
+.toast.error {
+  background-color: #dc3545;
+}
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    main {
+        padding: 2rem 1.5rem;
+    }
+    
+    .styled-table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-width: 480px) {
+    main {
+        padding: 1.5rem 1rem;
+    }
+
+    .tab-buttons button {
+        padding: 0.6rem;
+        font-size: 0.9rem;
+    }
+}
