@@ -9,13 +9,115 @@ import { createClient } from "@supabase/supabase-js";
 // --- SUPABASE SETUP ---
 const SUPABASE_URL = 'https://peettiigrkhtloqschwe.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlZXR0aWlncmtodGxvcXNjaHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Mjc3MzMsImV4cCI6MjA3MTIwMzczM30.mnnIlRJaRQP2RnHyb-0Sp0AwPE6hTUe5uWrMi-Q6pnc';
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 // --- TYPES ---
 type Role = 'student' | 'parent' | 'teacher' | 'admin';
 type PostStatus = 'pending_admin' | 'published';
 type CommentStatus = 'pending_teacher' | 'approved';
+
+// --- DATABASE TYPES (auto-generated or manually typed) ---
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          parent_id: string | null
+          post_id: string
+          status: CommentStatus
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          post_id: string
+          status: CommentStatus
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          post_id?: string
+          status?: CommentStatus
+        }
+      }
+      posts: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          status: PostStatus
+          title: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          status: PostStatus
+          title: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          status?: PostStatus
+          title?: string
+        }
+      }
+      profiles: {
+        Row: {
+          id: string
+          role: Role
+          username: string
+        }
+        Insert: {
+          id: string
+          role: Role
+          username: string
+        }
+        Update: {
+          id?: string
+          role?: Role
+          username?: string
+        }
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+const db = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 
 interface User {
     id: string; // from supabase.auth.user
@@ -445,7 +547,7 @@ function handleCreatePost(e: Event) {
         author_id: user.id,
         title,
         content,
-        status: user.role === 'admin' ? 'published' : 'pending_admin' as PostStatus
+        status: (user.role === 'admin' ? 'published' : 'pending_admin') as PostStatus
     };
     
     handleAction(() => db.from('posts').insert(newPost));
@@ -475,7 +577,7 @@ function handleAddComment(e: Event) {
         post_id: postId,
         author_id: user.id,
         content,
-        status: user.role === 'parent' ? 'pending_teacher' : 'approved' as CommentStatus
+        status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
     };
     
     handleAction(() => db.from('comments').insert(newComment));
@@ -507,7 +609,7 @@ function handleAddReply(e: Event) {
         parent_id: parentId,
         author_id: user.id,
         content,
-        status: user.role === 'parent' ? 'pending_teacher' : 'approved' as CommentStatus
+        status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
     };
 
     handleAction(() => db.from('comments').insert(newReply));
@@ -633,105 +735,3 @@ async function handleGenerateAnnouncement(e: Event) {
         generateBtn.textContent = 'Oluştur';
     }
 }
-
-// --- DATA FETCHING & INITIALIZATION ---
-
-async function loadAppData() {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session?.user) {
-        setState({ loading: false, currentUser: null, authView: 'login' });
-        return;
-    }
-
-    const user = session.user;
-
-    // Robust Profile Fetching with Retry
-    let profile = null;
-    let profileError: any = null;
-    for (let i = 0; i < 3; i++) {
-        const { data, error } = await db.from('profiles').select('username, role').eq('id', user.id).single();
-        if (data && !error) {
-            profile = data;
-            profileError = null;
-            break;
-        }
-        profileError = error;
-        // Wait 500ms before retrying
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    if (profileError || !profile) {
-        const detail = profileError ? `${profileError.message} (Kod: ${profileError.code})` : 'Profil verisi bulunamadı.';
-        console.error("Profile fetch error after retries:", profileError);
-        
-        // If profile is not found, it's a critical error. Log the user out.
-        await db.auth.signOut();
-        setState({
-            loading: false,
-            error: `Oturum açılamadı: Kullanıcı profili alınamadı. Lütfen veritabanı kurulumunun doğru olduğundan emin olun. Detay: ${detail}`,
-            currentUser: null,
-            authView: 'login'
-        });
-        return;
-    }
-
-    const [postsResult, commentsResult] = await Promise.all([
-        db.from('posts').select('*, profiles(username)').order('created_at', { ascending: false }),
-        db.from('comments').select('*, profiles(username, role)').order('created_at', { ascending: true })
-    ]);
-
-    if (postsResult.error) {
-        const errorMessage = `Duyurular alınamadı: ${postsResult.error.message}`;
-        console.error("Posts fetch error:", postsResult.error);
-        setState({ loading: false, error: errorMessage });
-        return;
-    }
-
-    if (commentsResult.error) {
-        const errorMessage = `Yorumlar alınamadı: ${commentsResult.error.message}`;
-        console.error("Comments fetch error:", commentsResult.error);
-        setState({ loading: false, error: errorMessage });
-        return;
-    }
-
-    const currentUser: User = { id: user.id, username: profile.username, role: profile.role };
-    const posts: Post[] = postsResult.data.map((p: any) => ({
-        id: p.id,
-        authorId: p.author_id,
-        authorName: p.profiles?.username || 'Bilinmeyen Yazar',
-        title: p.title,
-        content: p.content,
-        createdAt: p.created_at,
-        status: p.status,
-    }));
-    const comments: PostComment[] = commentsResult.data.map((c: any) => ({
-        id: c.id,
-        postId: c.post_id,
-        authorId: c.author_id,
-        authorName: c.profiles?.username || 'Bilinmeyen Kullanıcı',
-        authorRole: c.profiles?.role || 'student',
-        content: c.content,
-        createdAt: c.created_at,
-        status: c.status,
-        parentId: c.parent_id,
-    }));
-
-    setState({ currentUser, posts, comments, loading: false, error: null });
-}
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial check
-    loadAppData();
-    
-    // Listen for auth changes
-    db.auth.onAuthStateChange((event: string, session: any) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            loadAppData();
-        } else if (event === 'SIGNED_OUT') {
-            setState(getInitialState()); // Reset to initial state and show login
-            state.loading = false;
-            renderApp();
-        }
-    });
-});
