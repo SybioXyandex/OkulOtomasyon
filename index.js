@@ -1,364 +1,697 @@
-// ====================================================================================
-// DOM Elemanları
-// ====================================================================================
-const authContainer = document.getElementById('auth-container');
-const homeContainer = document.getElementById('home-container');
-const loginForm = document.getElementById('login-form');
-const signupForm = document.getElementById('signup-form');
-const loginTab = document.getElementById('login-tab');
-const signupTab = document.getElementById('signup-tab');
-const authError = document.getElementById('auth-error');
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+import { GoogleGenAI } from "https://esm.run/@google/genai";
 
-const welcomeMessage = document.getElementById('welcome-message');
-const announcementsTab = document.getElementById('announcements-tab-main');
-const eventsTab = document.getElementById('events-tab-main');
-const adminTab = document.getElementById('admin-tab-main');
-const logoutTab = document.getElementById('logout-tab-main');
 
-const announcementsSection = document.getElementById('announcements-section');
-const eventsSection = document.getElementById('events-section');
-const adminControls = document.getElementById('admin-controls');
-const announcementsTbody = document.getElementById('announcements-tbody');
-const eventsTbody = document.getElementById('events-tbody');
-
-const addAnnouncementForm = document.getElementById('add-announcement-form');
-const addEventForm = document.getElementById('add-event-form');
-const notificationToast = document.getElementById('notification-toast');
-
-// ====================================================================================
-// Supabase Yapılandırması ve İstemcisi
-// Kendi Supabase projenizin URL ve Anon Anahtarını buraya ekleyin.
-// ====================================================================================
+// --- SUPABASE SETUP ---
 const SUPABASE_URL = 'https://peettiigrkhtloqschwe.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlZXR0aWlncmtodGxvcXNjaHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Mjc3MzMsImV4cCI6MjA3MTIwMzczM30.mnnIlRJaRQP2RnHyb-0Sp0AwPE6hTUe5uWrMi-Q6pnc';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ====================================================================================
-// Yardımcı Fonksiyonlar
-// ====================================================================================
-
-/**
- * Toast bildirimini gösterir.
- * @param {string} message - Gösterilecek mesaj.
- * @param {boolean} isError - Hata bildirimi mi olduğunu belirtir.
- */
-function showToast(message, isError = false) {
-    notificationToast.textContent = message;
-    notificationToast.classList.remove('hidden', 'success', 'error');
-    if (isError) {
-        notificationToast.classList.add('error');
-    } else {
-        notificationToast.classList.add('success');
-    }
-    notificationToast.classList.add('visible');
-
-    setTimeout(() => {
-        notificationToast.classList.remove('visible');
-        notificationToast.classList.add('hidden');
-    }, 3000);
+// --- STATE MANAGEMENT ---
+function getInitialState() {
+    return {
+        currentUser: null,
+        posts: [],
+        comments: [],
+        authView: 'login',
+        error: null,
+        loading: true,
+    };
 }
 
-/**
- * Kimlik doğrulama arayüzünü (login/signup) gösterir ve ana sayfayı gizler.
- */
-function showAuthUI() {
-    authContainer.classList.remove('hidden');
-    homeContainer.classList.add('hidden');
-    authError.classList.add('hidden');
+let state = getInitialState();
+
+function setState(newState) {
+    state = { ...state, ...newState };
+    renderApp();
 }
 
-/**
- * Ana sayfa arayüzünü gösterir ve kimlik doğrulama sayfasını gizler.
- */
-function showHomeUI() {
-    authContainer.classList.add('hidden');
-    homeContainer.classList.remove('hidden');
+// --- UTILITIES ---
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => document.querySelectorAll(selector);
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
-/**
- * Verilen role göre arayüzü günceller.
- * @param {string} role - Kullanıcının rolü ('guest' veya 'admin').
- */
-function updateUIForRole(role) {
-    if (role === 'admin') {
-        adminTab.classList.remove('hidden');
-        adminControls.classList.remove('hidden');
-    } else {
-        adminTab.classList.add('hidden');
-        adminControls.classList.add('hidden');
-    }
-}
+// --- RENDER FUNCTIONS ---
 
-// ====================================================================================
-// Veri Yükleme Fonksiyonları
-// ====================================================================================
+function renderApp() {
+    const root = document.getElementById('root');
+    if (!root) return;
 
-/**
- * Duyuruları veritabanından çeker ve tabloya ekler.
- */
-async function fetchAndRenderAnnouncements() {
-    announcementsTbody.innerHTML = ''; // Tabloyu temizle
-    const { data, error } = await supabase
-        .from('announcements')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error('Duyurular yüklenirken hata oluştu:', error.message);
-        showToast('Duyurular yüklenemedi.', true);
+    if (state.loading) {
+        root.innerHTML = `<div class="loader-container"><div class="loader"></div></div>`;
         return;
     }
 
-    if (data && data.length > 0) {
-        data.forEach(announcement => {
-            const row = document.createElement('tr');
-            row.innerHTML = `<td>${announcement.content}</td>`;
-            announcementsTbody.appendChild(row);
-        });
+    if (state.currentUser) {
+        root.innerHTML = renderDashboard();
     } else {
-        const row = document.createElement('tr');
-        row.innerHTML = `<td>Henüz duyuru bulunmamaktadır.</td>`;
-        announcementsTbody.appendChild(row);
+        root.innerHTML = renderAuth();
     }
+    attachEventListeners();
 }
 
-/**
- * Etkinlikleri veritabanından çeker ve tabloya ekler.
- */
-async function fetchAndRenderEvents() {
-    eventsTbody.innerHTML = ''; // Tabloyu temizle
-    const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .order('date', { ascending: true });
-
-    if (error) {
-        console.error('Etkinlikler yüklenirken hata oluştu:', error.message);
-        showToast('Etkinlikler yüklenemedi.', true);
-        return;
-    }
-
-    if (data && data.length > 0) {
-        data.forEach(event => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${event.name}</td>
-                <td>${event.date}</td>
-                <td>${event.location}</td>
-            `;
-            eventsTbody.appendChild(row);
-        });
-    } else {
-        const row = document.createElement('tr');
-        row.innerHTML = `<td colspan="3">Henüz etkinlik bulunmamaktadır.</td>`;
-        eventsTbody.appendChild(row);
-    }
+function renderAuth() {
+    const isLogin = state.authView === 'login';
+    return `
+        <div class="auth-container">
+            <div class="auth-tabs">
+                <button class="auth-tab ${isLogin ? 'active' : ''}" data-view="login">Giriş Yap</button>
+                <button class="auth-tab ${!isLogin ? 'active' : ''}" data-view="register">Kayıt Ol</button>
+            </div>
+            <form id="${isLogin ? 'login-form' : 'register-form'}">
+                <div class="form-group">
+                    <label for="email">E-posta</label>
+                    <input type="email" id="email" class="form-control" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="password">Şifre</label>
+                    <input type="password" id="password" class="form-control" required autocomplete="current-password">
+                </div>
+                ${!isLogin ? `
+                    <div class="form-group">
+                        <label for="role">Rol</label>
+                        <select id="role" class="form-control" required>
+                            <option value="student">Öğrenci</option>
+                            <option value="parent">Veli</option>
+                            <option value="teacher">Öğretmen</option>
+                            <option value="admin">Yönetici</option>
+                        </select>
+                    </div>
+                ` : ''}
+                <button type="submit" class="btn btn-primary btn-block">
+                    ${isLogin ? 'Giriş Yap' : 'Kayıt Ol'}
+                </button>
+                ${state.error ? `<p class="error-message">${state.error}</p>` : ''}
+            </form>
+        </div>
+    `;
 }
 
-// ====================================================================================
-// Kimlik Doğrulama İşlemleri
-// ====================================================================================
+function renderDashboard() {
+    const user = state.currentUser;
+    return `
+        <header class="dashboard-header">
+            <h1>Okul İletişim Platformu</h1>
+            <div class="user-info">
+                <span>Hoşgeldin, <strong>${user.username}</strong> (${user.role})</span>
+                <button id="logout-btn" class="btn">Çıkış Yap</button>
+            </div>
+        </header>
+        <main>
+            ${user.role === 'teacher' || user.role === 'admin' ? renderPostCreationForm() : ''}
+            <div class="feed-container">
+                ${getVisiblePosts().map(renderPost).join('')}
+            </div>
+        </main>
+    `;
+}
 
-/**
- * Supabase kimlik doğrulama durumundaki değişiklikleri dinler.
- * Kullanıcı giriş yaptığında veya çıkış yaptığında arayüzü günceller.
- */
-supabase.auth.onAuthStateChange(async (event, session) => {
-    if (session) {
-        showHomeUI();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            welcomeMessage.textContent = `Hoş geldin, ${user.email}`;
+function renderPostCreationForm() {
+    return `
+        <div class="post-creation-card">
+            <h2>Yeni Duyuru/Etkinlik Oluştur</h2>
+            <form id="create-post-form">
+                <div class="form-group">
+                    <label for="post-title">Başlık</label>
+                    <input type="text" id="post-title" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="post-content">İçerik</label>
+                    <textarea id="post-content" class="form-control" required></textarea>
+                </div>
+                <div class="post-creation-form-actions">
+                    <button type="button" class="btn btn-outline" id="open-ai-modal-btn">✨ AI ile Oluştur</button>
+                    <button type="submit" class="btn btn-primary">Gönder</button>
+                </div>
+            </form>
+        </div>
+    `;
+}
 
-            // Kullanıcı rolünü profil tablosundan çek
-            const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', user.id)
-                .single();
+function getVisiblePosts() {
+    const user = state.currentUser;
+    if (user.role === 'admin' || user.role === 'teacher') {
+        return state.posts;
+    }
+    return state.posts.filter(p => p.status === 'published');
+}
 
-            if (error) {
-                console.error('Kullanıcı rolü çekilirken hata oluştu:', error.message);
+function renderPost(post) {
+    const user = state.currentUser;
+    const isAdmin = user.role === 'admin';
+    const canSeeComments = user.role !== 'student';
+
+    let statusBadge = '';
+    if (post.status === 'pending_admin') {
+        statusBadge = `<span class="badge badge-warning">Yönetici Onayı Bekliyor</span>`;
+    }
+
+    const commentCount = canSeeComments ? getVisibleComments(post.id).length : 0;
+
+    return `
+        <div class="post-card" data-post-id="${post.id}">
+            <div class="post-header">
+                <div class="post-header-info">
+                    <h2>${post.title}</h2>
+                    <p class="post-meta">
+                        ${post.authorName} tarafından, ${formatDate(post.createdAt)}
+                    </p>
+                </div>
+                <div class="post-header-actions">
+                    ${statusBadge}
+                    ${isAdmin && post.status === 'pending_admin' ? `
+                        <button class="btn btn-success btn-sm" data-action="publish-post" data-post-id="${post.id}">Yayınla</button>
+                    ` : ''}
+                </div>
+            </div>
+            <div class="post-content">${post.content}</div>
+            ${canSeeComments ? `
+                <div class="post-actions">
+                    <button class="btn-toggle-comments" data-action="toggle-comments" data-post-id="${post.id}">
+                        Yorumları Göster (${commentCount})
+                    </button>
+                </div>
+                <div class="comments-container hidden" id="comments-for-${post.id}">
+                    ${renderCommentsSection(post.id)}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function getVisibleComments(postId) {
+    const user = state.currentUser;
+    const postComments = state.comments.filter(c => c.postId === postId);
+
+    if (user.role === 'admin' || user.role === 'teacher') {
+        return postComments;
+    }
+    return postComments.filter(c => c.status === 'approved' || (c.authorId === user.id));
+}
+
+
+function renderCommentsSection(postId) {
+    const user = state.currentUser;
+    const comments = getVisibleComments(postId);
+
+    const repliesByParentId = comments.reduce((acc, comment) => {
+        if (comment.parentId) {
+            if (!acc[comment.parentId]) {
+                acc[comment.parentId] = [];
             }
-
-            if (profile) {
-                updateUIForRole(profile.role);
-            }
-
-            // İlk olarak duyuruları göster
-            announcementsTab.click();
+            acc[comment.parentId].push(comment);
         }
-    } else {
-        showAuthUI();
-        welcomeMessage.textContent = 'Anasayfa';
-        adminTab.classList.add('hidden');
+        return acc;
+    }, {});
+
+    const topLevelComments = comments.filter(c => !c.parentId);
+    const canComment = ['parent', 'teacher', 'admin'].includes(user.role);
+
+    return `
+        <div class="comments-section">
+            <h3>Yorumlar</h3>
+            <div class="comments-list">
+                ${topLevelComments.length > 0
+                    ? topLevelComments.map(comment => `
+                        <div class="comment-thread">
+                            ${renderComment(comment)}
+                            <div class="replies-container">
+                                ${(repliesByParentId[comment.id] || []).map(reply => renderComment(reply, true)).join('')}
+                            </div>
+                        </div>
+                    `).join('')
+                    : '<p>Henüz yorum yapılmamış.</p>'}
+            </div>
+            ${canComment ? `
+                <form class="comment-form" data-action="add-comment" data-post-id="${postId}">
+                    <div class="form-group">
+                       <textarea class="form-control" name="comment-content" placeholder="Yorumunuzu yazın..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Gönder</button>
+                </form>
+            ` : ''}
+        </div>
+    `;
+}
+
+function renderComment(comment, isReply = false) {
+    const user = state.currentUser;
+    const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin';
+    const canReply = ['parent', 'teacher', 'admin'].includes(user.role);
+
+    let statusBadge = '';
+    if (comment.status === 'pending_teacher') {
+        statusBadge = `<span class="badge badge-secondary">Onay Bekliyor</span>`;
     }
-});
 
-// ====================================================================================
-// Olay Dinleyicileri (Event Listeners)
-// ====================================================================================
+    return `
+        <div class="comment ${isReply ? 'is-reply' : ''} comment-role-${comment.authorRole}" data-comment-id="${comment.id}">
+            <div class="comment-header">
+                <span class="comment-author">${comment.authorName} (${comment.authorRole})</span>
+                <div class="comment-actions">
+                    ${statusBadge}
+                    ${isTeacherOrAdmin && comment.status === 'pending_teacher' ? `
+                        <button class="btn btn-success btn-sm" data-action="approve-comment" data-comment-id="${comment.id}">Onayla</button>
+                    ` : ''}
+                </div>
+            </div>
+            <p class="comment-body">${comment.content}</p>
+            <div class="comment-footer">
+                ${canReply ? `
+                    <button class="btn-reply" data-action="toggle-reply-form" data-comment-id="${comment.id}">Yanıtla</button>
+                ` : ''}
+            </div>
+            <form class="comment-form reply-form hidden" data-action="add-reply" data-post-id="${comment.postId}" data-parent-id="${comment.id}">
+                <div class="form-group">
+                    <textarea class="form-control" name="reply-content" placeholder="Yanıtınızı yazın..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Gönder</button>
+            </form>
+        </div>
+    `;
+}
 
-// --- Sekme Değiştirme (Login/Signup) ---
-loginTab.addEventListener('click', () => {
-    loginTab.classList.add('active');
-    signupTab.classList.remove('active');
-    loginForm.classList.remove('hidden');
-    signupForm.classList.add('hidden');
-    authError.classList.add('hidden');
-});
+// --- EVENT HANDLERS & LOGIC ---
 
-signupTab.addEventListener('click', () => {
-    signupTab.classList.add('active');
-    loginTab.classList.remove('active');
-    signupForm.classList.remove('hidden');
-    loginForm.classList.add('hidden');
-    authError.classList.add('hidden');
-});
+function attachEventListeners() {
+    // Auth
+    $$('.auth-tab').forEach(tab => tab.addEventListener('click', handleAuthTabClick));
+    $('#login-form')?.addEventListener('submit', handleLogin);
+    $('#register-form')?.addEventListener('submit', handleRegister);
 
-// --- Ana Sayfa Sekmeleri ---
-announcementsTab.addEventListener('click', () => {
-    document.querySelectorAll('#home-container .tab-buttons button').forEach(btn => btn.classList.remove('active'));
-    announcementsTab.classList.add('active');
-    announcementsSection.classList.remove('hidden');
-    eventsSection.classList.add('hidden');
-    adminControls.classList.add('hidden');
-    fetchAndRenderAnnouncements();
-});
+    // Dashboard
+    $('#logout-btn')?.addEventListener('click', handleLogout);
+    $('#create-post-form')?.addEventListener('submit', handleCreatePost);
+    $('#open-ai-modal-btn')?.addEventListener('click', handleOpenAIModal);
+    
+    // Post & Comment Actions
+    $$('[data-action="publish-post"]').forEach(btn => btn.addEventListener('click', handlePublishPost));
+    $$('[data-action="approve-comment"]').forEach(btn => btn.addEventListener('click', handleApproveComment));
+    $$('[data-action="add-comment"]').forEach(form => form.addEventListener('submit', handleAddComment));
+    $$('[data-action="toggle-reply-form"]').forEach(btn => btn.addEventListener('click', handleToggleReplyForm));
+    $$('[data-action="add-reply"]').forEach(form => form.addEventListener('submit', handleAddReply));
+    $$('[data-action="toggle-comments"]').forEach(btn => btn.addEventListener('click', handleToggleComments));
+}
 
-eventsTab.addEventListener('click', () => {
-    document.querySelectorAll('#home-container .tab-buttons button').forEach(btn => btn.classList.remove('active'));
-    eventsTab.classList.add('active');
-    announcementsSection.classList.add('hidden');
-    eventsSection.classList.remove('hidden');
-    adminControls.classList.add('hidden');
-    fetchAndRenderEvents();
-});
+function handleAuthTabClick(e) {
+    const target = e.currentTarget;
+    const view = target.dataset.view;
+    setState({ authView: view, error: null });
+}
 
-adminTab.addEventListener('click', () => {
-    document.querySelectorAll('#home-container .tab-buttons button').forEach(btn => btn.classList.remove('active'));
-    adminTab.classList.add('active');
-    announcementsSection.classList.add('hidden');
-    eventsSection.classList.add('hidden');
-    adminControls.classList.remove('hidden');
-});
-
-logoutTab.addEventListener('click', async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-        showToast('Çıkış yapılırken bir hata oluştu.', true);
-    } else {
-        showToast('Başarıyla çıkış yapıldı.');
-    }
-});
-
-// --- Form Gönderimleri ---
-loginForm.addEventListener('submit', async (e) => {
+async function handleLogin(e) {
     e.preventDefault();
-    const email = e.target['login-email'].value;
-    const password = e.target['login-password'].value;
+    const emailInput = $('#email');
+    const passwordInput = $('#password');
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!emailInput || !passwordInput) {
+        setState({ error: 'Giriş formu hatası. Lütfen tekrar deneyin.', loading: false });
+        return;
+    }
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    
+    setState({ loading: true, error: null });
+
+    const { error } = await db.auth.signInWithPassword({ email, password });
 
     if (error) {
-        authError.textContent = error.message;
-        authError.classList.remove('hidden');
-        showToast('Giriş başarısız.', true);
-    } else {
-        authError.classList.add('hidden');
-        showToast('Başarıyla giriş yapıldı!');
-        loginForm.reset();
+        setState({ error: 'Giriş bilgileri hatalı.', loading: false });
     }
-});
+    // onAuthStateChange handles success
+}
 
-signupForm.addEventListener('submit', async (e) => {
+async function handleRegister(e) {
     e.preventDefault();
-    const email = e.target['signup-email'].value;
-    const password = e.target['signup-password'].value;
-    const confirmPassword = e.target['confirm-password'].value;
-    const role = e.target.role.value;
+    const emailInput = $('#email');
+    const passwordInput = $('#password');
+    const roleInput = $('#role');
 
-    if (password !== confirmPassword) {
-        authError.textContent = 'Şifreler eşleşmiyor.';
-        authError.classList.remove('hidden');
-        showToast('Şifreler eşleşmiyor.', true);
+    if (!emailInput || !passwordInput || !roleInput) {
+        setState({ error: 'Kayıt formu hatası. Lütfen tekrar deneyin.', loading: false });
         return;
     }
 
-    const { data: { user }, error } = await supabase.auth.signUp({
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    const role = roleInput.value;
+    const username = email.split('@')[0];
+
+    setState({ loading: true, error: null });
+
+    const { error } = await db.auth.signUp({
         email,
         password,
         options: {
             data: {
-                role: role // Rol bilgisini metaveriye ekleyebiliriz
+                username: username,
+                role: role
             }
         }
     });
 
     if (error) {
-        authError.textContent = error.message;
-        authError.classList.remove('hidden');
-        showToast('Kayıt başarısız.', true);
-    } else {
-        authError.classList.add('hidden');
-        // Kullanıcıyı profiles tablosuna ekle
-        if (user) {
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .insert({ id: user.id, email: user.email, role: role });
-
-            if (profileError) {
-                console.error('Profil eklenirken hata oluştu:', profileError.message);
-            }
+        let userMessage = error.message;
+        // Provide a more user-friendly error for a common Supabase backend misconfiguration.
+        if (userMessage.includes('Database error saving new user')) {
+            userMessage = 'Kayıt sırasında bir sunucu hatası oluştu. Lütfen sistem yöneticisi ile iletişime geçin.';
         }
-
-        showToast('Kayıt başarılı. Lütfen e-postanızı kontrol edin.');
-        signupForm.reset();
-        loginTab.click(); // Kayıt sonrası giriş sayfasına yönlendir
+        setState({ error: userMessage, loading: false });
     }
-});
+    // onAuthStateChange will handle login and data load automatically on success.
+}
 
-addAnnouncementForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const content = e.target['announcement-content'].value;
 
-    const { error } = await supabase
-        .from('announcements')
-        .insert([{ content }]);
+async function handleLogout() {
+    setState({ loading: true });
+    await db.auth.signOut();
+    // onAuthStateChange will handle the UI update to the login screen
+}
 
+async function handleAction(action) {
+    setState({ loading: true });
+    const { error } = await action();
     if (error) {
-        showToast('Duyuru eklenirken hata oluştu.', true);
-        console.error('Duyuru eklenirken hata:', error.message);
+        console.error("Supabase error:", error);
+        setState({ error: "Bir hata oluştu: " + error.message, loading: false });
     } else {
-        showToast('Duyuru başarıyla yayınlandı.');
-        addAnnouncementForm.reset();
-        fetchAndRenderAnnouncements(); // Duyuruları yenile
+        await loadAppData(); // Re-fetch all data after any action
     }
-});
+}
 
-addEventForm.addEventListener('submit', async (e) => {
+function handleCreatePost(e) {
     e.preventDefault();
-    const name = e.target['event-name'].value;
-    const date = e.target['event-date'].value;
-    const location = e.target['event-location'].value;
+    const title = ($('#post-title')).value;
+    const content = ($('#post-content')).value;
+    const user = state.currentUser;
 
-    const { error } = await supabase
-        .from('events')
-        .insert([{ name, date, location }]);
+    const newPost = {
+        author_id: user.id,
+        title,
+        content,
+        status: user.role === 'admin' ? 'published' : 'pending_admin'
+    };
+    
+    handleAction(() => db.from('posts').insert(newPost));
+}
 
-    if (error) {
-        showToast('Etkinlik eklenirken hata oluştu.', true);
-        console.error('Etkinlik eklenirken hata:', error.message);
-    } else {
-        showToast('Etkinlik başarıyla eklendi.');
-        addEventForm.reset();
-        fetchAndRenderEvents(); // Etkinlikleri yenile
+function handlePublishPost(e) {
+    const postId = (e.currentTarget).dataset.postId;
+    handleAction(() => db.from('posts').update({ status: 'published' }).eq('id', postId));
+}
+
+function handleApproveComment(e) {
+    const commentId = (e.currentTarget).dataset.commentId;
+    handleAction(() => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
+}
+
+function handleAddComment(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const postId = form.dataset.postId;
+    const contentEl = form.querySelector('[name="comment-content"]');
+    const content = contentEl.value;
+    const user = state.currentUser;
+
+    if(!content.trim()) return;
+
+    const newComment = {
+        post_id: postId,
+        author_id: user.id,
+        content,
+        status: user.role === 'parent' ? 'pending_teacher' : 'approved'
+    };
+    
+    handleAction(() => db.from('comments').insert(newComment));
+}
+
+function handleToggleReplyForm(e) {
+    const commentId = (e.currentTarget).dataset.commentId;
+    const commentElement = (e.currentTarget).closest('.comment');
+    const replyForm = commentElement?.querySelector('.reply-form');
+    replyForm?.classList.toggle('hidden');
+    if (!replyForm?.classList.contains('hidden')) {
+        (replyForm?.querySelector('textarea')).focus();
     }
+}
+
+function handleAddReply(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const postId = form.dataset.postId;
+    const parentId = form.dataset.parentId;
+    const contentEl = form.querySelector('[name="reply-content"]');
+    const content = contentEl.value;
+    const user = state.currentUser;
+
+    if (!content.trim()) return;
+
+    const newReply = {
+        post_id: postId,
+        parent_id: parentId,
+        author_id: user.id,
+        content,
+        status: user.role === 'parent' ? 'pending_teacher' : 'approved'
+    };
+
+    handleAction(() => db.from('comments').insert(newReply));
+}
+
+function handleToggleComments(e) {
+    const button = e.currentTarget;
+    const postId = button.dataset.postId;
+    const commentsContainer = $(`#comments-for-${postId}`);
+    
+    if (commentsContainer) {
+        const isHidden = commentsContainer.classList.toggle('hidden');
+        const commentCount = getVisibleComments(postId).length;
+        if (isHidden) {
+            button.textContent = `Yorumları Göster (${commentCount})`;
+        } else {
+            button.textContent = `Yorumları Gizle (${commentCount})`;
+        }
+    }
+}
+
+// --- AI ASSISTANT ---
+
+function createAIModalHTML() {
+    return `
+        <div class="modal-overlay" id="ai-modal-overlay">
+            <div class="modal-content" id="ai-modal-content" role="dialog" aria-labelledby="ai-modal-title" aria-modal="true">
+                <div class="modal-header">
+                    <h2 id="ai-modal-title">✨ AI Duyuru Asistanı</h2>
+                    <button class="modal-close-btn" aria-label="Kapat">&times;</button>
+                </div>
+                <form id="generate-ai-form">
+                    <div class="form-group">
+                        <label for="ai-brief">Duyurunun ana fikri</label>
+                        <input type="text" id="ai-brief" class="form-control" placeholder="Örn: Cuma günü 5. sınıflar için matematik sınavı" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ai-tone">Metin tonu</label>
+                        <select id="ai-tone" class="form-control" required>
+                            <option value="Resmi">Resmi</option>
+                            <option value="Samimi">Samimi</option>
+                            <option value="Acil">Acil</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Oluştur</button>
+                </form>
+                <div id="ai-result-container">
+                    <p>Duyuru metni burada görünecek.</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function handleOpenAIModal() {
+    const modal = createAIModalHTML();
+    document.body.insertAdjacentHTML('beforeend', modal);
+    
+    $('#ai-modal-overlay')?.addEventListener('click', handleCloseAIModal);
+    $('#ai-modal-content')?.addEventListener('click', (e) => e.stopPropagation());
+    $('.modal-close-btn')?.addEventListener('click', handleCloseAIModal);
+    $('#generate-ai-form')?.addEventListener('submit', handleGenerateAnnouncement);
+}
+
+function handleCloseAIModal() {
+    const modal = $('#ai-modal-overlay');
+    modal?.remove();
+}
+
+async function handleGenerateAnnouncement(e) {
+    e.preventDefault();
+    const brief = ($('#ai-brief')).value;
+    const tone = ($('#ai-tone')).value;
+    const resultContainer = $('#ai-result-container');
+    const generateBtn = ($('#generate-ai-form button[type="submit"]'));
+
+    if (!brief || !resultContainer || !generateBtn) return;
+    
+    resultContainer.innerHTML = `<div class="loader"></div>`;
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Oluşturuluyor...';
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const prompt = `Lütfen aşağıdaki notlara ve tona göre, bir okul duyuru platformu için veli ve öğrencilere yönelik bir duyuru metni oluştur. Duyuru net, anlaşılır ve profesyonel olsun.\n\nNotlar: "${brief}"\n\nTon: ${tone}`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                systemInstruction: "You are an AI assistant for a school communication platform. Your task is to write announcements in Turkish for students and parents. Ensure the tone is appropriate and the message is clear and professional, based on the user's notes.",
+            }
+        });
+        
+        const generatedText = response.text;
+
+        resultContainer.innerHTML = `
+            <div class="form-group" style="width: 100%;">
+                <label>Oluşturulan Metin</label>
+                <textarea id="ai-generated-text" class="form-control" rows="8">${generatedText}</textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" id="use-ai-text-btn">Bu Metni Kullan</button>
+            </div>
+        `;
+
+        $('#use-ai-text-btn')?.addEventListener('click', () => {
+            const postContent = $('#post-content');
+            const aiText = $('#ai-generated-text');
+            if (postContent && aiText) {
+                postContent.value = aiText.value;
+                postContent.dispatchEvent(new Event('input', { bubbles: true })); // For any autosize listeners
+                postContent.focus();
+            }
+            handleCloseAIModal();
+        });
+
+    } catch (error) {
+        console.error("Gemini API error:", error);
+        resultContainer.innerHTML = `<p class="error-message">AI metin oluştururken bir hata oluştu. Lütfen API anahtarınızın doğru olduğundan emin olun ve tekrar deneyin.</p>`;
+    } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'Oluştur';
+    }
+}
+
+// --- DATA FETCHING & INITIALIZATION ---
+
+async function loadAppData() {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session?.user) {
+        setState({ loading: false, currentUser: null, authView: 'login' });
+        return;
+    }
+
+    const user = session.user;
+
+    // Robust Profile Fetching with Retry
+    let profile = null;
+    let profileError = null;
+    for (let i = 0; i < 3; i++) {
+        const { data, error } = await db.from('profiles').select('username, role').eq('id', user.id).single();
+        if (data && !error) {
+            profile = data;
+            profileError = null;
+            break;
+        }
+        profileError = error;
+        // Wait 500ms before retrying
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    if (profileError || !profile) {
+        const detail = profileError ? `${profileError.message} (Kod: ${profileError.code})` : 'Profil verisi bulunamadı.';
+        console.error("Profile fetch error after retries:", profileError);
+        
+        // If profile is not found, it's a critical error. Log the user out.
+        await db.auth.signOut();
+        setState({
+            loading: false,
+            error: `Oturum açılamadı: Kullanıcı profili alınamadı. Lütfen veritabanı kurulumunun doğru olduğundan emin olun. Detay: ${detail}`,
+            currentUser: null,
+            authView: 'login'
+        });
+        return;
+    }
+
+    const [postsResult, commentsResult] = await Promise.all([
+        db.from('posts').select('*, profiles(username)').order('created_at', { ascending: false }),
+        db.from('comments').select('*, profiles(username, role)').order('created_at', { ascending: true })
+    ]);
+
+    if (postsResult.error) {
+        const errorMessage = `Duyurular alınamadı: ${postsResult.error.message}`;
+        console.error("Posts fetch error:", postsResult.error);
+        setState({ loading: false, error: errorMessage });
+        return;
+    }
+
+    if (commentsResult.error) {
+        const errorMessage = `Yorumlar alınamadı: ${commentsResult.error.message}`;
+        console.error("Comments fetch error:", commentsResult.error);
+        setState({ loading: false, error: errorMessage });
+        return;
+    }
+
+    const currentUser = { id: user.id, username: profile.username, role: profile.role };
+    const posts = postsResult.data.map((p) => ({
+        id: p.id,
+        authorId: p.author_id,
+        authorName: p.profiles?.username || 'Bilinmeyen Yazar',
+        title: p.title,
+        content: p.content,
+        createdAt: p.created_at,
+        status: p.status,
+    }));
+    const comments = commentsResult.data.map((c) => ({
+        id: c.id,
+        postId: c.post_id,
+        authorId: c.author_id,
+        authorName: c.profiles?.username || 'Bilinmeyen Kullanıcı',
+        authorRole: c.profiles?.role || 'student',
+        content: c.content,
+        createdAt: c.created_at,
+        status: c.status,
+        parentId: c.parent_id,
+    }));
+
+    setState({ currentUser, posts, comments, loading: false, error: null });
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial check
+    loadAppData();
+    
+    // Listen for auth changes
+    db.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            loadAppData();
+        } else if (event === 'SIGNED_OUT') {
+            setState(getInitialState()); // Reset to initial state and show login
+            state.loading = false;
+            renderApp();
+        }
+    });
 });
 
-// Sayfa yüklendiğinde mevcut oturumu kontrol et
-
-supabase.auth.getSession();
 
 
