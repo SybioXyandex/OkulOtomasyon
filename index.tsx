@@ -550,17 +550,17 @@ function handleCreatePost(e: Event) {
         status: (user.role === 'admin' ? 'published' : 'pending_admin') as PostStatus
     };
     
-    handleAction(() => db.from('posts').insert(newPost));
+    handleAction(async () => db.from('posts').insert(newPost));
 }
 
 function handlePublishPost(e: Event) {
     const postId = (e.currentTarget as HTMLElement).dataset.postId!;
-    handleAction(() => db.from('posts').update({ status: 'published' }).eq('id', postId));
+    handleAction(async () => db.from('posts').update({ status: 'published' }).eq('id', postId));
 }
 
 function handleApproveComment(e: Event) {
     const commentId = (e.currentTarget as HTMLElement).dataset.commentId!;
-    handleAction(() => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
+    handleAction(async () => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
 }
 
 function handleAddComment(e: Event) {
@@ -580,7 +580,7 @@ function handleAddComment(e: Event) {
         status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
     };
     
-    handleAction(() => db.from('comments').insert(newComment));
+    handleAction(async () => db.from('comments').insert(newComment));
 }
 
 function handleToggleReplyForm(e: Event) {
@@ -612,7 +612,7 @@ function handleAddReply(e: Event) {
         status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
     };
 
-    handleAction(() => db.from('comments').insert(newReply));
+    handleAction(async () => db.from('comments').insert(newReply));
 }
 
 function handleToggleComments(e: Event) {
@@ -735,3 +735,105 @@ async function handleGenerateAnnouncement(e: Event) {
         generateBtn.textContent = 'Oluştur';
     }
 }
+
+// --- DATA FETCHING & INITIALIZATION ---
+
+async function loadAppData() {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session?.user) {
+        setState({ loading: false, currentUser: null, authView: 'login' });
+        return;
+    }
+
+    const user = session.user;
+
+    // Robust Profile Fetching with Retry
+    let profile = null;
+    let profileError: any = null;
+    for (let i = 0; i < 3; i++) {
+        const { data, error } = await db.from('profiles').select('username, role').eq('id', user.id).single();
+        if (data && !error) {
+            profile = data;
+            profileError = null;
+            break;
+        }
+        profileError = error;
+        // Wait 500ms before retrying
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    if (profileError || !profile) {
+        const detail = profileError ? `${profileError.message} (Kod: ${profileError.code})` : 'Profil verisi bulunamadı.';
+        console.error("Profile fetch error after retries:", profileError);
+        
+        // If profile is not found, it's a critical error. Log the user out.
+        await db.auth.signOut();
+        setState({
+            loading: false,
+            error: `Oturum açılamadı: Kullanıcı profili alınamadı. Lütfen veritabanı kurulumunun doğru olduğundan emin olun. Detay: ${detail}`,
+            currentUser: null,
+            authView: 'login'
+        });
+        return;
+    }
+
+    const [postsResult, commentsResult] = await Promise.all([
+        db.from('posts').select('*, profiles(username)').order('created_at', { ascending: false }),
+        db.from('comments').select('*, profiles(username, role)').order('created_at', { ascending: true })
+    ]);
+
+    if (postsResult.error) {
+        const errorMessage = `Duyurular alınamadı: ${postsResult.error.message}`;
+        console.error("Posts fetch error:", postsResult.error);
+        setState({ loading: false, error: errorMessage });
+        return;
+    }
+
+    if (commentsResult.error) {
+        const errorMessage = `Yorumlar alınamadı: ${commentsResult.error.message}`;
+        console.error("Comments fetch error:", commentsResult.error);
+        setState({ loading: false, error: errorMessage });
+        return;
+    }
+
+    const currentUser: User = { id: user.id, username: profile.username, role: profile.role as Role };
+    const posts: Post[] = postsResult.data.map((p: any) => ({
+        id: p.id,
+        authorId: p.author_id,
+        authorName: p.profiles?.username || 'Bilinmeyen Yazar',
+        title: p.title,
+        content: p.content,
+        createdAt: p.created_at,
+        status: p.status,
+    }));
+    const comments: PostComment[] = commentsResult.data.map((c: any) => ({
+        id: c.id,
+        postId: c.post_id,
+        authorId: c.author_id,
+        authorName: c.profiles?.username || 'Bilinmeyen Kullanıcı',
+        authorRole: c.profiles?.role || 'student',
+        content: c.content,
+        createdAt: c.created_at,
+        status: c.status,
+        parentId: c.parent_id,
+    }));
+
+    setState({ currentUser, posts, comments, loading: false, error: null });
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial check
+    loadAppData();
+    
+    // Listen for auth changes
+    db.auth.onAuthStateChange((event: string, session: any) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            loadAppData();
+        } else if (event === 'SIGNED_OUT') {
+            setState(getInitialState()); // Reset to initial state and show login
+            state.loading = false;
+            renderApp();
+        }
+    });
+});
