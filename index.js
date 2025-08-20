@@ -2,13 +2,14 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI } from "https://esm.run/@google/genai";
+import { GoogleGenAI } from "@google/genai";
+import { createClient } from "@supabase/supabase-js";
 
 
 // --- SUPABASE SETUP ---
 const SUPABASE_URL = 'https://peettiigrkhtloqschwe.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlZXR0aWlncmtodGxvcXNjaHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Mjc3MzMsImV4cCI6MjA3MTIwMzczM30.mnnIlRJaRQP2RnHyb-0Sp0AwPE6hTUe5uWrMi-Q6pnc';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 // --- STATE MANAGEMENT ---
@@ -692,6 +693,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-
-
