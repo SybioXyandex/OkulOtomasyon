@@ -406,17 +406,17 @@ function handleCreatePost(e) {
         status: user.role === 'admin' ? 'published' : 'pending_admin'
     };
     
-    handleAction(() => db.from('posts').insert(newPost));
+    handleAction(async () => db.from('posts').insert(newPost));
 }
 
 function handlePublishPost(e) {
     const postId = (e.currentTarget).dataset.postId;
-    handleAction(() => db.from('posts').update({ status: 'published' }).eq('id', postId));
+    handleAction(async () => db.from('posts').update({ status: 'published' }).eq('id', postId));
 }
 
 function handleApproveComment(e) {
     const commentId = (e.currentTarget).dataset.commentId;
-    handleAction(() => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
+    handleAction(async () => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
 }
 
 function handleAddComment(e) {
@@ -436,7 +436,7 @@ function handleAddComment(e) {
         status: user.role === 'parent' ? 'pending_teacher' : 'approved'
     };
     
-    handleAction(() => db.from('comments').insert(newComment));
+    handleAction(async () => db.from('comments').insert(newComment));
 }
 
 function handleToggleReplyForm(e) {
@@ -468,7 +468,7 @@ function handleAddReply(e) {
         status: user.role === 'parent' ? 'pending_teacher' : 'approved'
     };
 
-    handleAction(() => db.from('comments').insert(newReply));
+    handleAction(async () => db.from('comments').insert(newReply));
 }
 
 function handleToggleComments(e) {
