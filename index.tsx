@@ -526,7 +526,7 @@ async function handleLogout() {
     // onAuthStateChange will handle the UI update to the login screen
 }
 
-async function handleAction(action: () => Promise<any>) {
+async function handleAction(action: () => PromiseLike<{ error: any }>) {
     setState({ loading: true });
     const { error } = await action();
     if (error) {
@@ -543,26 +543,24 @@ function handleCreatePost(e: Event) {
     const content = ($('#post-content') as HTMLTextAreaElement).value;
     const user = state.currentUser!;
 
-    const newPost: Database['public']['Tables']['posts']['Insert'] = {
+    const newPost = {
         author_id: user.id,
         title,
         content,
-        status: user.role === 'admin' ? 'published' : 'pending_admin'
+        status: (user.role === 'admin' ? 'published' : 'pending_admin') as PostStatus
     };
     
-    handleAction(async () => db.from('posts').insert(newPost));
+    handleAction(() => db.from('posts').insert([newPost]));
 }
 
 function handlePublishPost(e: Event) {
     const postId = (e.currentTarget as HTMLElement).dataset.postId!;
-    const updateData: Database['public']['Tables']['posts']['Update'] = { status: 'published' };
-    handleAction(async () => db.from('posts').update(updateData).eq('id', postId));
+    handleAction(() => db.from('posts').update({ status: 'published' }).eq('id', postId));
 }
 
 function handleApproveComment(e: Event) {
     const commentId = (e.currentTarget as HTMLElement).dataset.commentId!;
-    const updateData: Database['public']['Tables']['comments']['Update'] = { status: 'approved' };
-    handleAction(async () => db.from('comments').update(updateData).eq('id', commentId));
+    handleAction(() => db.from('comments').update({ status: 'approved' }).eq('id', commentId));
 }
 
 function handleAddComment(e: Event) {
@@ -575,14 +573,14 @@ function handleAddComment(e: Event) {
 
     if(!content.trim()) return;
 
-    const newComment: Database['public']['Tables']['comments']['Insert'] = {
+    const newComment = {
         post_id: postId,
         author_id: user.id,
         content,
-        status: user.role === 'parent' ? 'pending_teacher' : 'approved'
+        status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
     };
     
-    handleAction(async () => db.from('comments').insert(newComment));
+    handleAction(() => db.from('comments').insert([newComment]));
 }
 
 function handleToggleReplyForm(e: Event) {
@@ -606,15 +604,15 @@ function handleAddReply(e: Event) {
 
     if (!content.trim()) return;
 
-    const newReply: Database['public']['Tables']['comments']['Insert'] = {
+    const newReply = {
         post_id: postId,
         parent_id: parentId,
         author_id: user.id,
         content,
-        status: user.role === 'parent' ? 'pending_teacher' : 'approved'
+        status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
     };
 
-    handleAction(async () => db.from('comments').insert(newReply));
+    handleAction(() => db.from('comments').insert([newReply]));
 }
 
 function handleToggleComments(e: Event) {
