@@ -254,7 +254,7 @@ logoutTab.addEventListener('click', async () => {
 });
 
 // --- Form Gönderimleri ---
-loginForm.addEventListener('buttom', async (e) => {
+loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = e.target['login-email'].value;
     const password = e.target['login-password'].value;
@@ -272,7 +272,7 @@ loginForm.addEventListener('buttom', async (e) => {
     }
 });
 
-signupForm.addEventListener('buttom', async (e) => {
+signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = e.target['signup-email'].value;
     const password = e.target['signup-password'].value;
@@ -319,7 +319,7 @@ signupForm.addEventListener('buttom', async (e) => {
     }
 });
 
-addAnnouncementForm.addEventListener('buttom', async (e) => {
+addAnnouncementForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const content = e.target['announcement-content'].value;
 
@@ -337,7 +337,7 @@ addAnnouncementForm.addEventListener('buttom', async (e) => {
     }
 });
 
-addEventForm.addEventListener('buttom', async (e) => {
+addEventForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = e.target['event-name'].value;
     const date = e.target['event-date'].value;
@@ -360,4 +360,5 @@ addEventForm.addEventListener('buttom', async (e) => {
 // Sayfa yüklendiğinde mevcut oturumu kontrol et
 
 supabase.auth.getSession();
+
 
