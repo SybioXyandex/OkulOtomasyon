@@ -2,5 +2,6 @@ import { defineConfig } from 'vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Bu basit kurulum için özel bir yapılandırma gerekmemektedir.
+  // GitHub Pages'da yayınlanacaksa depo adınızı buraya /depo-adi/ şeklinde yazın
+  base: '/OkulOtomasyon/',
 })
