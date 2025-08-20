@@ -11,11 +11,6 @@ const SUPABASE_URL = 'https://peettiigrkhtloqschwe.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlZXR0aWlncmtodGxvcXNjaHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Mjc3MzMsImV4cCI6MjA3MTIwMzczM30.mnnIlRJaRQP2RnHyb-0Sp0AwPE6hTUe5uWrMi-Q6pnc';
 
 
-// --- TYPES ---
-type Role = 'student' | 'parent' | 'teacher' | 'admin';
-type PostStatus = 'pending_admin' | 'published';
-type CommentStatus = 'pending_teacher' | 'approved';
-
 // --- DATABASE TYPES (auto-generated or manually typed) ---
 export type Json =
   | string
@@ -36,7 +31,7 @@ export interface Database {
           id: string
           parent_id: string | null
           post_id: string
-          status: CommentStatus
+          status: Database["public"]["Enums"]["comment_status"]
         }
         Insert: {
           author_id: string
@@ -45,7 +40,7 @@ export interface Database {
           id?: string
           parent_id?: string | null
           post_id: string
-          status: CommentStatus
+          status: Database["public"]["Enums"]["comment_status"]
         }
         Update: {
           author_id?: string
@@ -54,7 +49,7 @@ export interface Database {
           id?: string
           parent_id?: string | null
           post_id?: string
-          status?: CommentStatus
+          status?: Database["public"]["Enums"]["comment_status"]
         }
       }
       posts: {
@@ -63,7 +58,7 @@ export interface Database {
           content: string
           created_at: string
           id: string
-          status: PostStatus
+          status: Database["public"]["Enums"]["post_status"]
           title: string
         }
         Insert: {
@@ -71,7 +66,7 @@ export interface Database {
           content: string
           created_at?: string
           id?: string
-          status: PostStatus
+          status: Database["public"]["Enums"]["post_status"]
           title: string
         }
         Update: {
@@ -79,24 +74,24 @@ export interface Database {
           content?: string
           created_at?: string
           id?: string
-          status?: PostStatus
+          status?: Database["public"]["Enums"]["post_status"]
           title?: string
         }
       }
       profiles: {
         Row: {
           id: string
-          role: Role
+          role: Database["public"]["Enums"]["user_role"]
           username: string
         }
         Insert: {
           id: string
-          role: Role
+          role: Database["public"]["Enums"]["user_role"]
           username: string
         }
         Update: {
           id?: string
-          role?: Role
+          role?: Database["public"]["Enums"]["user_role"]
           username?: string
         }
       }
@@ -108,7 +103,9 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      comment_status: "pending_teacher" | "approved"
+      post_status: "pending_admin" | "published"
+      user_role: "student" | "parent" | "teacher" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -117,6 +114,11 @@ export interface Database {
 }
 
 const db = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// --- TYPES ---
+type Role = Database['public']['Enums']['user_role'];
+type PostStatus = Database['public']['Enums']['post_status'];
+type CommentStatus = Database['public']['Enums']['comment_status'];
 
 
 interface User {
@@ -550,7 +552,7 @@ function handleCreatePost(e: Event) {
         status: (user.role === 'admin' ? 'published' : 'pending_admin') as PostStatus
     };
     
-    handleAction(() => db.from('posts').insert([newPost]));
+    handleAction(() => db.from('posts').insert(newPost));
 }
 
 function handlePublishPost(e: Event) {
@@ -580,7 +582,7 @@ function handleAddComment(e: Event) {
         status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
     };
     
-    handleAction(() => db.from('comments').insert([newComment]));
+    handleAction(() => db.from('comments').insert(newComment));
 }
 
 function handleToggleReplyForm(e: Event) {
@@ -612,7 +614,7 @@ function handleAddReply(e: Event) {
         status: (user.role === 'parent' ? 'pending_teacher' : 'approved') as CommentStatus
     };
 
-    handleAction(() => db.from('comments').insert([newReply]));
+    handleAction(() => db.from('comments').insert(newReply));
 }
 
 function handleToggleComments(e: Event) {
