@@ -36,7 +36,7 @@ export interface Database {
           id: string
           parent_id: string | null
           post_id: string
-          status: Database["public"]["Enums"]["comment_status"]
+          status: "pending_teacher" | "approved"
         }
         Insert: {
           author_id: string
@@ -45,7 +45,7 @@ export interface Database {
           id?: string
           parent_id?: string | null
           post_id: string
-          status: Database["public"]["Enums"]["comment_status"]
+          status: "pending_teacher" | "approved"
         }
         Update: {
           author_id?: string
@@ -54,7 +54,7 @@ export interface Database {
           id?: string
           parent_id?: string | null
           post_id?: string
-          status?: Database["public"]["Enums"]["comment_status"]
+          status?: "pending_teacher" | "approved"
         }
       }
       posts: {
@@ -63,7 +63,7 @@ export interface Database {
           content: string
           created_at: string
           id: string
-          status: Database["public"]["Enums"]["post_status"]
+          status: "pending_admin" | "published"
           title: string
         }
         Insert: {
@@ -71,7 +71,7 @@ export interface Database {
           content: string
           created_at?: string
           id?: string
-          status: Database["public"]["Enums"]["post_status"]
+          status: "pending_admin" | "published"
           title: string
         }
         Update: {
@@ -79,24 +79,24 @@ export interface Database {
           content?: string
           created_at?: string
           id?: string
-          status?: Database["public"]["Enums"]["post_status"]
+          status?: "pending_admin" | "published"
           title?: string
         }
       }
       profiles: {
         Row: {
           id: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: "student" | "parent" | "teacher" | "admin"
           username: string
         }
         Insert: {
           id: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: "student" | "parent" | "teacher" | "admin"
           username: string
         }
         Update: {
           id?: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: "student" | "parent" | "teacher" | "admin"
           username?: string
         }
       }
@@ -238,8 +238,6 @@ function renderAuth(): string {
                         <select id="role" class="form-control" required>
                             <option value="student">Öğrenci</option>
                             <option value="parent">Veli</option>
-                            <option value="teacher">Öğretmen</option>
-                            <option value="admin">Yönetici</option>
                         </select>
                     </div>
                 ` : ''}
