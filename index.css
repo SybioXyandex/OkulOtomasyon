@@ -295,6 +295,19 @@ body {
 .post-content {
     padding: 1.5rem;
     white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.post-content a {
+    color: var(--primary-color);
+    text-decoration: underline;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.post-content a:hover {
+    color: var(--primary-hover);
+    text-decoration: none;
 }
 
 .post-actions {
