@@ -45,6 +45,30 @@ function formatDate(dateString) {
     });
 }
 
+function linkify(plainText) {
+    if (!plainText) return '';
+
+    // First, escape any special HTML characters to prevent XSS.
+    const escapedText = plainText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    // Regex to find URLs.
+    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    
+    return escapedText.replace(urlRegex, (url) => {
+        let href = url;
+        // Prepend 'http://' if the URL starts with 'www.' but has no protocol.
+        if (url.toLowerCase().startsWith('www.')) {
+            href = 'http://' + href;
+        }
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+}
+
 // --- RENDER FUNCTIONS ---
 
 function renderApp() {
@@ -176,7 +200,7 @@ function renderPost(post) {
                     ` : ''}
                 </div>
             </div>
-            <div class="post-content">${post.content}</div>
+            <div class="post-content">${linkify(post.content)}</div>
             ${canSeeComments ? `
                 <div class="post-actions">
                     <button class="btn-toggle-comments" data-action="toggle-comments" data-post-id="${post.id}">
