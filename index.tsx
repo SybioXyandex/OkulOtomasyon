@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import { GoogleGenAI } from "@google/genai";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, PostgrestError } from "@supabase/supabase-js";
 
 
 // --- API KEYS ---
@@ -196,6 +196,30 @@ function formatDate(dateString: string) {
     });
 }
 
+function linkify(plainText: string): string {
+    if (!plainText) return '';
+
+    // First, escape any special HTML characters to prevent XSS.
+    const escapedText = plainText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    // Regex to find URLs.
+    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    
+    return escapedText.replace(urlRegex, (url) => {
+        let href = url;
+        // Prepend 'http://' if the URL starts with 'www.' but has no protocol.
+        if (url.toLowerCase().startsWith('www.')) {
+            href = 'http://' + href;
+        }
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+}
+
 // --- RENDER FUNCTIONS ---
 
 function renderApp() {
@@ -327,7 +351,7 @@ function renderPost(post: Post): string {
                     ` : ''}
                 </div>
             </div>
-            <div class="post-content">${post.content}</div>
+            <div class="post-content">${linkify(post.content)}</div>
             ${canSeeComments ? `
                 <div class="post-actions">
                     <button class="btn-toggle-comments" data-action="toggle-comments" data-post-id="${post.id}">
@@ -531,7 +555,7 @@ async function handleLogout() {
     // onAuthStateChange will handle the UI update to the login screen
 }
 
-async function handleAction(action: () => PromiseLike<{ error: any }>) {
+async function handleAction(action: () => PromiseLike<{ error: PostgrestError | null }>) {
     setState({ loading: true });
     const { error } = await action();
     if (error) {
