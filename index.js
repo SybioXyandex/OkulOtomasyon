@@ -709,9 +709,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             loadAppData();
         } else if (event === 'SIGNED_OUT') {
-            setState(getInitialState()); // Reset to initial state and show login
-            state.loading = false;
-            renderApp();
+            // Reset to initial state, set loading to false to show login form
+            setState({ ...getInitialState(), loading: false });
         }
     });
 });
