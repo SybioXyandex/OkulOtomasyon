@@ -9,6 +9,7 @@ Uygulama, modern web teknolojileri kullanılarak oluşturulmuştur ve PWA (Progr
 - **Kullanıcı Kimlik Doğrulama:** E-posta ve şifre ile kayıt olma ve giriş yapma.
 - **Rol Tabanlı Erişim:**
   - **Öğrenci (guest):** Duyuruları ve etkinlikleri görüntüleyebilir.
+  - **Veli (guest):** Duyuruları ve etkinlikleri görüntüleyebilir, yorum yapabilir.
   - **Öğretmen (admin):** Duyuruları/etkinlikleri görüntüleyebilir ve yeni kayıtlar ekleyebilir.
 - **Duyurular:** Yöneticiler tarafından eklenen ve tüm kullanıcılar tarafından görülebilen duyurular listesi.
 - **Etkinlikler:** Yöneticiler tarafından eklenen ve yaklaşan etkinliklerin bir listesi.
