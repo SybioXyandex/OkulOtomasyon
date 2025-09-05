@@ -329,14 +329,14 @@ function getVisiblePosts(): Post[] {
 function renderPost(post: Post): string {
     const user = state.currentUser!;
     const isAdmin = user.role === 'admin';
-    const canSeeComments = user.role !== 'student';
+    const canSeeComments = true;
 
     let statusBadge = '';
     if (post.status === 'pending_admin') {
         statusBadge = `<span class="badge badge-warning">Yönetici Onayı Bekliyor</span>`;
     }
 
-    const commentCount = canSeeComments ? getVisibleComments(post.id).length : 0;
+    const commentCount = getVisibleComments(post.id).length;
 
     return `
         <div class="post-card" data-post-id="${post.id}">
@@ -395,7 +395,7 @@ function renderCommentsSection(postId: string): string {
     }, {} as Record<string, PostComment[]>);
 
     const topLevelComments = comments.filter(c => !c.parentId);
-    const canComment = ['parent', 'teacher', 'admin'].includes(user.role);
+    const canComment = ['student', 'parent', 'teacher', 'admin'].includes(user.role);
 
     return `
         <div class="comments-section">
@@ -427,7 +427,7 @@ function renderCommentsSection(postId: string): string {
 function renderComment(comment: PostComment, isReply: boolean = false): string {
     const user = state.currentUser!;
     const isTeacherOrAdmin = user.role === 'teacher' || user.role === 'admin';
-    const canReply = ['parent', 'teacher', 'admin'].includes(user.role);
+    const canReply = ['student', 'parent', 'teacher', 'admin'].includes(user.role);
 
     let statusBadge = '';
     if (comment.status === 'pending_teacher') {
@@ -611,7 +611,7 @@ function handleAddComment(e: Event) {
         post_id: postId,
         author_id: user.id,
         content,
-        status: (user.role === 'parent' ? 'pending_teacher' : 'approved')
+        status: (user.role === 'parent' || user.role === 'student' ? 'pending_teacher' : 'approved')
     };
     
     handleAction(() => db.from('comments').insert(newComment));
@@ -643,7 +643,7 @@ function handleAddReply(e: Event) {
         parent_id: parentId,
         author_id: user.id,
         content,
-        status: (user.role === 'parent' ? 'pending_teacher' : 'approved')
+        status: (user.role === 'parent' || user.role === 'student' ? 'pending_teacher' : 'approved')
     };
 
     handleAction(() => db.from('comments').insert(newReply));
