@@ -699,6 +699,10 @@ function createAIModalHTML(): string {
 }
 
 function handleOpenAIModal() {
+    if (!process.env.API_KEY) {
+        alert("AI Assistant API anahtarı yapılandırılmamış. Lütfen uygulamanın kurulumunu kontrol edin veya sistem yöneticisiyle iletişime geçin. (.env.local dosyasında API_KEY eksik olabilir)");
+        return;
+    }
     const modal = createAIModalHTML();
     document.body.insertAdjacentHTML('beforeend', modal);
     
